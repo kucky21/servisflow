@@ -1,0 +1,70 @@
+{varType Nette\Database\Table\ActiveRow[] $entries}
+{varType Nette\Utils\Paginator $paginator}
+{varType App\DTO\Filter\AuditFilter $filter}
+{varType array $entityTypes}
+{varType array $userOptions}
+
+{block title}Audit log{/block}
+
+{block content}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Audit log</h1>
+        <p class="page-subtitle">Záznam významných změn v systému – kdo, co, kdy a odkud</p>
+    </div>
+</div>
+
+<section class="card">
+    <form method="get" action="{link default}" class="filter-bar" data-live-filter="list">
+        <div class="filter-search">
+            {icon('search')}
+            <input type="search" name="action" value="{$filter->action}" class="form-control" placeholder="Akce, např. order.status" aria-label="Hledat akci">
+        </div>
+        <select name="entity" class="form-select" aria-label="Typ záznamu">
+            <option value="">Všechny entity</option>
+            <option n:foreach="$entityTypes as $value => $label" value="{$value}" selected="{$filter->entityType === $value}">{$label}</option>
+        </select>
+        <select name="userId" class="form-select" aria-label="Uživatel">
+            <option value="">Všichni uživatelé</option>
+            <option n:foreach="$userOptions as $value => $label" value="{$value}" selected="{$filter->userId === $value}">{$label}</option>
+        </select>
+    </form>
+
+    {snippet list}
+    {if $entries}
+        <div class="table-responsive">
+            <table class="table data-table mb-0 audit-table">
+                <thead><tr><th>Čas</th><th>Uživatel</th><th>Akce</th><th>Záznam</th><th>Změny</th><th class="d-none d-lg-table-cell">IP</th></tr></thead>
+                <tbody>
+                <tr n:foreach="$entries as $entry">
+                    <td class="small text-nowrap">{$entry->created_at|czDateTime}</td>
+                    <td class="small">{$entry->user ? $entry->user->first_name . ' ' . $entry->user->last_name : 'Systém'}</td>
+                    <td><code class="audit-action">{$entry->action}</code></td>
+                    <td class="small text-nowrap">
+                        {if $entry->entity_type === 'service_order' && $entry->entity_id}
+                            <a n:href="Order:detail, $entry->entity_id">zakázka #{$entry->entity_id}</a>
+                        {elseif $entry->entity_type === 'customer' && $entry->entity_id && $entry->action !== 'customer.deleted'}
+                            <a n:href="Customer:detail, $entry->entity_id">zákazník #{$entry->entity_id}</a>
+                        {elseif $entry->entity_type === 'inventory_item' && $entry->entity_id && $entry->action !== 'inventory.deleted'}
+                            <a n:href="Inventory:detail, $entry->entity_id">položka #{$entry->entity_id}</a>
+                        {else}
+                            {$entry->entity_type}{if $entry->entity_id} #{$entry->entity_id}{/if}
+                        {/if}
+                    </td>
+                    <td class="small audit-changes">
+                        {if $entry->changes}
+                            <details><summary>zobrazit</summary><pre>{$entry->changes|prettyJson}</pre></details>
+                        {else}—{/if}
+                    </td>
+                    <td class="small text-secondary font-monospace d-none d-lg-table-cell">{$entry->ip_address ?? '—'}</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer">{include '../@paginator.latte', paginator: $paginator}</div>
+    {else}
+        {include '../@empty.latte', icon: 'shield-check', title: 'Žádné záznamy', text: 'Filtru neodpovídá žádný auditní záznam.'}
+    {/if}
+    {/snippet}
+</section>
+{/block}

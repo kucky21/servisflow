@@ -1,0 +1,43 @@
+# ServisHub – registrace služeb
+# Repozitáře, služby, formuláře a konzolové příkazy se registrují automaticky podle adresářů;
+# ručně se konfigurují jen služby s parametry.
+
+search:
+	repositories:
+		in: %appDir%/Repositories
+		classes: [*Repository]
+
+	services:
+		in: %appDir%/Services
+		classes: [*Service, *Generator, *Logger, *Calculator]
+
+	forms:
+		in: %appDir%/Forms
+		classes: [*FormFactory]
+
+	commands:
+		in: %appDir%/Console
+		classes: [*Command]
+
+
+services:
+	- App\Core\RouterFactory::createRouter
+	- App\Core\Database\RowNormalizer
+
+	# Bezpečnost
+	security.passwords: Nette\Security\Passwords(::PASSWORD_BCRYPT, [cost: 12])
+	- App\Security\AuthorizatorFactory::create
+	- App\Security\Authenticator(
+		maxFailedLogins: %security.maxFailedLogins%
+		lockoutMinutes: %security.lockoutMinutes%
+	)
+	- App\Security\OrderAccessPolicy
+
+	# Doména
+	- App\Model\Workflow\OrderStateMachine
+
+	# PDF dokumenty
+	- App\Services\Document\DocumentService(tempDir: %pdfTempDir%)
+
+	# Demo data (pouze mimo produkci – kontrola v příkazu)
+	- App\Console\Seed\DemoDataSeeder(demoPassword: %env.DEMO_PASSWORD%)

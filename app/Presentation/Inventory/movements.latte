@@ -1,0 +1,41 @@
+{varType Nette\Database\Table\ActiveRow[] $movements}
+{varType Nette\Utils\Paginator $paginator}
+
+{block title}Skladové pohyby{/block}
+
+{block content}
+<div class="page-header">
+    <div>
+        <nav class="breadcrumbs"><a n:href="default">Sklad</a></nav>
+        <h1 class="page-title">Skladové pohyby</h1>
+        <p class="page-subtitle">Kompletní historie příjmů, výdejů, vratek a inventurních úprav</p>
+    </div>
+</div>
+
+<section class="card">
+    {if $movements}
+        <div class="table-responsive">
+            <table class="table data-table mb-0">
+                <thead><tr><th>Datum</th><th>Položka</th><th>Typ</th><th class="text-end">Množství</th><th class="text-end">Stav po</th><th>Zakázka / poznámka</th><th class="d-none d-lg-table-cell">Provedl</th></tr></thead>
+                <tbody>
+                <tr n:foreach="$movements as $movement">
+                    <td class="small text-nowrap">{$movement->created_at|czDateTime}</td>
+                    <td><a n:href="detail, $movement->inventory_item_id">{$movement->inventory_item->name}</a><div class="small font-monospace text-secondary">{$movement->inventory_item->sku}</div></td>
+                    <td>{movementBadge($movement->type)}</td>
+                    <td n:class="text-end, fw-semibold, $movement->quantity > 0 ? 'text-success' : 'text-danger'">{$movement->quantity > 0 ? '+' : ''}{$movement->quantity}</td>
+                    <td class="text-end">{$movement->quantity_after}</td>
+                    <td class="small">
+                        {if $movement->service_order_id}<a n:href="Order:detail, $movement->service_order_id">{$movement->service_order->order_number}</a>{/if}
+                        <span class="text-secondary">{$movement->note}</span>
+                    </td>
+                    <td class="small d-none d-lg-table-cell">{$movement->user ? $movement->user->first_name . ' ' . $movement->user->last_name : '—'}</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer">{include '../@paginator.latte', paginator: $paginator}</div>
+    {else}
+        {include '../@empty.latte', icon: 'arrow-left-right', title: 'Zatím žádné pohyby'}
+    {/if}
+</section>
+{/block}

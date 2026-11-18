@@ -1,0 +1,75 @@
+{layout none}
+{import '../@form.latte'}
+{varType bool $showDemo}
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Přihlášení · ServisHub</title>
+    <link rel="icon" href="{$basePath}/assets/img/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{$basePath}/assets/css/app.css?v=1.0.0">
+</head>
+<body class="auth-body">
+<main class="auth-split">
+    <section class="auth-hero d-none d-lg-flex">
+        <div class="auth-hero-inner">
+            <div class="sidebar-brand mb-5">
+                <span class="brand-mark">{icon('wrench')}</span>
+                <span class="brand-text">Servis<strong>Hub</strong></span>
+            </div>
+            <h1 class="display-6 fw-bold mb-3">Servis pod kontrolou.<br>Od příjmu po předání.</h1>
+            <p class="lead opacity-75 mb-5">Zakázky, technici, sklad, ceny a protokoly v jednom systému – přehledně a bez papírování.</p>
+            <ul class="auth-features">
+                <li>{icon('git-branch')} Řízený workflow zakázek se schvalováním</li>
+                <li>{icon('package-check')} Sklad s automatickým odpisem materiálu</li>
+                <li>{icon('file-text')} PDF protokoly a cenové rozpisy</li>
+                <li>{icon('shield-check')} Role, oprávnění a auditní stopa</li>
+            </ul>
+        </div>
+    </section>
+
+    <section class="auth-form-side">
+        <div class="auth-card">
+            <div class="d-lg-none sidebar-brand mb-4 justify-content-center">
+                <span class="brand-mark">{icon('wrench')}</span>
+                <span class="brand-text text-body">Servis<strong>Hub</strong></span>
+            </div>
+            <h2 class="h4 fw-bold mb-1">Přihlášení</h2>
+            <p class="text-secondary mb-4">Přihlaste se svým firemním účtem.</p>
+
+            <div n:foreach="$flashes as $flash" class="alert alert-{$flash->type === 'danger' ? 'danger' : 'info'} py-2 small">{$flash->message}</div>
+
+            <form n:name="signInForm" class="vstack gap-3">
+                {include formErrors $form}
+                {include field $form['email']}
+                {include field $form['password']}
+                {include field $form['remember']}
+                <button n:name="send" class="btn btn-primary btn-lg w-100">Přihlásit se</button>
+            </form>
+
+            <div n:if="$showDemo" class="demo-box mt-4">
+                <div class="fw-semibold mb-1">{icon('info')} Demo přístupy (heslo <code>Demo1234!</code>)</div>
+                <div class="demo-accounts">
+                    <button type="button" class="demo-account" data-demo-login="admin@servishub.local">
+                        <strong>Administrátor</strong><span>admin@servishub.local</span>
+                    </button>
+                    <button type="button" class="demo-account" data-demo-login="vedouci@servishub.local">
+                        <strong>Vedoucí servisu</strong><span>vedouci@servishub.local</span>
+                    </button>
+                    <button type="button" class="demo-account" data-demo-login="technik@servishub.local">
+                        <strong>Technik</strong><span>technik@servishub.local</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+<script n:nonce src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script n:nonce src="{$basePath}/assets/vendor/netteForms.min.js"></script>
+<script n:nonce src="{$basePath}/assets/js/app.js?v=1.0.0"></script>
+</body>
+</html>

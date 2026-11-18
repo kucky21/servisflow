@@ -1,0 +1,115 @@
+{varType Nette\Database\Table\ActiveRow $item}
+{varType Nette\Database\Table\ActiveRow[] $movements}
+{varType Nette\Database\Table\ActiveRow|null $usage}
+{varType bool $canManage}
+{varType bool $hasMovements}
+{varType float|null $margin}
+{import '../@form.latte'}
+
+{block title}{$item->name}{/block}
+
+{block content}
+<div class="page-header">
+    <div class="d-flex align-items-center gap-3">
+        <span class="icon-tile icon-tile-lg">{icon('package')}</span>
+        <div>
+            <nav class="breadcrumbs"><a n:href="default">Sklad</a> <span>/</span> <span class="font-monospace">{$item->sku}</span></nav>
+            <h1 class="page-title">{$item->name}</h1>
+            <p class="page-subtitle">{$item->description ?? 'Bez popisu'}</p>
+        </div>
+    </div>
+    <div class="page-actions" n:if="$canManage">
+        <a n:href="edit, $item->id" class="btn btn-light">{icon('pencil')} Upravit</a>
+        <button n:if="!$hasMovements" type="button" class="btn btn-light text-danger"
+                data-confirm="Smazat položku {$item->sku}?" data-confirm-text="Položka nemá žádné pohyby. Akci nelze vrátit."
+                data-action="{link delete!, id => $item->id}" data-method="post">{icon('trash-2')}</button>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-4">
+        {snippet itemSummary}
+        <section class="card">
+            <div class="card-body">
+                <div class="stock-hero">
+                    <div class="stock-hero-value">
+                        <span n:class="$item->quantity === 0 ? 'text-danger' : ($item->quantity <= $item->min_quantity ? 'text-warning-emphasis' : 'text-success')">{$item->quantity}</span>
+                        <small>{$item->unit}</small>
+                    </div>
+                    <div class="small text-secondary">skladem · minimum {$item->min_quantity} {$item->unit}</div>
+                    <div n:if="$item->quantity <= $item->min_quantity" class="alert alert-warning small py-2 mt-3 mb-0">{icon('triangle-alert')} Zásoba je na minimu – doporučeno doobjednat.</div>
+                    <div n:if="!$item->is_active" class="alert alert-secondary small py-2 mt-3 mb-0">{icon('ban')} Položka je neaktivní a nelze ji vydávat.</div>
+                </div>
+                <dl class="info-list info-list-compact mt-3">
+                    <dt n:if="$canManage">Nákupní cena</dt><dd n:if="$canManage">{$item->purchase_price|money}</dd>
+                    <dt>Prodejní cena</dt><dd class="fw-semibold">{$item->sale_price|money}</dd>
+                    <dt n:if="$canManage && $margin !== null">Marže</dt><dd n:if="$canManage && $margin !== null">{$margin|number:1, ',', ' '} %</dd>
+                    <dt>Spotřebováno</dt><dd>{(int) ($usage?->qty ?? 0)} {$item->unit} na {(int) ($usage?->orders ?? 0)} zakázkách</dd>
+                </dl>
+            </div>
+        </section>
+        {/snippet}
+
+        {if $user->isAllowed('inventory', 'receive')}
+        <section class="card mt-3">
+            <div class="card-header"><h2 class="card-title">{icon('package-plus')} Příjem na sklad</h2></div>
+            <div class="card-body">
+                {snippet receiptForm}
+                <form n:name="receiptForm" class="ajax row g-3">
+                    {include formErrors $form}
+                    {include field $form['quantity'], class: 'col-6'}
+                    {include field $form['unit_price'], class: 'col-6'}
+                    {include field $form['note']}
+                    <div class="col-12"><button n:name="send" class="btn btn-primary w-100">{icon('plus')} Přijmout na sklad</button></div>
+                </form>
+                {/snippet}
+            </div>
+        </section>
+
+        <section class="card mt-3">
+            <div class="card-header"><h2 class="card-title">{icon('clipboard-check')} Inventura</h2></div>
+            <div class="card-body">
+                {snippet adjustmentForm}
+                <form n:name="adjustmentForm" class="ajax row g-3">
+                    {include formErrors $form}
+                    {include field $form['quantity'], class: 'col-5'}
+                    {include field $form['note'], class: 'col-7'}
+                    <div class="col-12"><button n:name="send" class="btn btn-light w-100">{icon('scale')} Nastavit skutečný stav</button></div>
+                </form>
+                {/snippet}
+            </div>
+        </section>
+        {/if}
+    </div>
+
+    <div class="col-xl-8">
+        <section class="card">
+            <div class="card-header"><h2 class="card-title">{icon('arrow-left-right')} Historie pohybů</h2></div>
+            {snippet movements}
+            {if $movements}
+                <div class="table-responsive">
+                    <table class="table data-table mb-0">
+                        <thead><tr><th>Datum</th><th>Typ</th><th class="text-end">Množství</th><th class="text-end">Stav po</th><th>Zakázka / poznámka</th><th class="d-none d-md-table-cell">Provedl</th></tr></thead>
+                        <tbody>
+                        <tr n:foreach="$movements as $movement">
+                            <td class="small text-nowrap">{$movement->created_at|czDateTime}</td>
+                            <td>{movementBadge($movement->type)}</td>
+                            <td n:class="text-end, fw-semibold, text-nowrap, $movement->quantity > 0 ? 'text-success' : 'text-danger'">{$movement->quantity > 0 ? '+' : ''}{$movement->quantity}</td>
+                            <td class="text-end">{$movement->quantity_after}</td>
+                            <td class="small">
+                                {if $movement->service_order_id}<a n:href="Order:detail, $movement->service_order_id">{$movement->service_order->order_number}</a>{/if}
+                                <span class="text-secondary">{$movement->note}</span>
+                            </td>
+                            <td class="small d-none d-md-table-cell">{$movement->user ? $movement->user->first_name . ' ' . $movement->user->last_name : '—'}</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            {else}
+                <div class="card-body">{include '../@empty.latte', icon: 'arrow-left-right', title: 'Žádné pohyby', text: 'Pohyby vzniknou příjmem, výdejem na zakázku nebo inventurou.'}</div>
+            {/if}
+            {/snippet}
+        </section>
+    </div>
+</div>
+{/block}

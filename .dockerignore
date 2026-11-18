@@ -1,0 +1,24 @@
+# Do produkčního image patří jen aplikace – ne vývojové nástroje, testy ani tajemství
+.git
+.github
+.env
+.env.*
+!.env.example
+vendor
+temp/*
+!temp/.gitkeep
+log/*
+!log/.gitkeep
+www/assets/vendor
+tests
+coverage
+.phpunit.cache
+phpunit.xml
+phpstan.neon
+phpcs.xml
+.editorconfig
+claude.md
+CLAUDE.md
+.claude
+.idea
+.vscode

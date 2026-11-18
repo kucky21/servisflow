@@ -1,0 +1,96 @@
+{varType Nette\Database\Table\ActiveRow $device}
+{varType Nette\Database\Table\ActiveRow $customer}
+{varType Nette\Database\Table\ActiveRow[] $activeOrders}
+{varType Nette\Database\Table\ActiveRow[] $pastOrders}
+{varType bool $hasOrders}
+
+{block title}{$device->manufacturer} {$device->model}{/block}
+
+{block content}
+<div class="page-header">
+    <div class="d-flex align-items-center gap-3">
+        <span class="icon-tile icon-tile-lg">{icon(deviceIcon($device->type))}</span>
+        <div>
+            <nav class="breadcrumbs"><a n:href="Customer:detail, $customer->id">{$customer->name}</a> <span>/</span> Zařízení</nav>
+            <h1 class="page-title">{$device->manufacturer} {$device->model}</h1>
+            <p class="page-subtitle">{deviceTypeLabel($device->type)}{if $device->serial_number} · SN <span class="font-monospace">{$device->serial_number}</span>{/if}</p>
+        </div>
+    </div>
+    <div class="page-actions">
+        <a n:if="$user->isAllowed('order', 'create')" n:href="Order:add, customerId => $customer->id, deviceId => $device->id" class="btn btn-primary">{icon('clipboard-plus')} Nová zakázka</a>
+        <a n:if="$user->isAllowed('device', 'edit')" n:href="edit, $device->id" class="btn btn-light">{icon('pencil')} Upravit</a>
+        <button n:if="$user->isAllowed('device', 'delete')" type="button" class="btn btn-light text-danger"
+                data-confirm="Smazat zařízení?"
+                data-confirm-text="{$hasOrders ? 'K zařízení existují zakázky – smazání bude odmítnuto.' : 'Akci nelze vrátit.'}"
+                data-action="{link delete!, id => $device->id}" data-method="post">
+            {icon('trash-2')}
+        </button>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-4">
+        <section class="card">
+            <div class="card-header"><h2 class="card-title">Základní informace</h2></div>
+            <div class="card-body">
+                <dl class="info-list">
+                    <dt>Typ</dt><dd>{deviceTypeLabel($device->type)}</dd>
+                    <dt>Výrobce</dt><dd>{$device->manufacturer}</dd>
+                    <dt>Model</dt><dd>{$device->model}</dd>
+                    <dt>Sériové číslo</dt><dd class="font-monospace">{$device->serial_number ?? '—'}</dd>
+                    <dt>Registrováno</dt><dd>{$device->registered_at|czDate}</dd>
+                    <dt>Majitel</dt><dd><a n:href="Customer:detail, $customer->id">{$customer->name}</a><br><span class="small text-secondary">{$customer->phone ?? $customer->email}</span></dd>
+                </dl>
+                <div n:if="$device->description" class="note-box mt-3">{icon('info')} <div>{$device->description|breakLines}</div></div>
+            </div>
+        </section>
+    </div>
+
+    <div class="col-xl-8">
+        <section class="card">
+            <div class="card-header"><h2 class="card-title">{icon('wrench')} Aktuální zakázky</h2></div>
+            {if $activeOrders}
+                <div class="list-group list-group-flush">
+                    <a n:foreach="$activeOrders as $order" n:href="Order:detail, $order->id" class="list-group-item list-group-item-action order-row">
+                        <div>
+                            <div class="fw-semibold">{$order->order_number} {priorityBadge($order->priority)}</div>
+                            <div class="small text-secondary">{$order->problem_description|truncate:120}</div>
+                        </div>
+                        <div class="text-end">
+                            {statusBadge($order->status)}
+                            <div class="small text-secondary mt-1">termín {$order->due_date|czDate}</div>
+                        </div>
+                    </a>
+                </div>
+            {else}
+                <div class="card-body">{include '../@empty.latte', icon: 'circle-check', title: 'Žádná rozpracovaná zakázka', text: 'Zařízení momentálně není v servisu.'}</div>
+            {/if}
+        </section>
+
+        <section class="card mt-4">
+            <div class="card-header"><h2 class="card-title">{icon('history')} Historie oprav a předchozí závady</h2></div>
+            {if $pastOrders}
+                <ul class="timeline">
+                    <li n:foreach="$pastOrders as $order">
+                        <span n:class="timeline-dot, 'tone-' . (App\Model\Enum\OrderStatus::from($order->status)->color())"></span>
+                        <div class="timeline-body">
+                            <div class="d-flex justify-content-between flex-wrap gap-2">
+                                <a n:href="Order:detail, $order->id" class="fw-semibold">{$order->order_number}</a>
+                                <span class="small text-secondary">{$order->received_at|czDate} → {($order->completed_at ?? $order->cancelled_at)|czDate}</span>
+                            </div>
+                            <div class="small"><strong>Závada:</strong> {$order->problem_description|truncate:200}</div>
+                            <div class="small" n:if="$order->diagnosis"><strong>Diagnostika:</strong> {$order->diagnosis|truncate:200}</div>
+                            <div class="mt-1 d-flex gap-2 align-items-center">
+                                {statusBadge($order->status)}
+                                <span n:if="$order->final_price !== null" class="small fw-semibold">{$order->final_price|money}</span>
+                            </div>
+                        </div>
+                    </li>
+                </ul>
+            {else}
+                <div class="card-body">{include '../@empty.latte', icon: 'history', title: 'Bez historie', text: 'Zařízení zatím nebylo opravováno.'}</div>
+            {/if}
+        </section>
+    </div>
+</div>
+{/block}

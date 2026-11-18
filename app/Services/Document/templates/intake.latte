@@ -1,0 +1,43 @@
+{layout '@layout.latte'}
+
+{block content}
+<h2>Popis závady dle zákazníka</h2>
+<div class="text-block">{$order->problem_description|breakLines}</div>
+
+<h2>Příslušenství a stav při převzetí</h2>
+<div class="text-block">{$order->accessories ?? 'Bez příslušenství.'|breakLines}</div>
+
+<h2>Podmínky převzetí</h2>
+<table class="grid">
+    <tr>
+        <td width="50%">Odhadovaná cena opravy</td>
+        <td class="num strong">{if $order->estimated_price !== null}{$order->estimated_price|money} vč. DPH{else}bude stanovena po diagnostice{/if}</td>
+    </tr>
+    <tr>
+        <td>Hodinová sazba práce (bez DPH)</td>
+        <td class="num">{$order->hourly_rate|money}</td>
+    </tr>
+    <tr>
+        <td>Předpokládaný termín dokončení</td>
+        <td class="num">{$order->due_date|czDate}</td>
+    </tr>
+    <tr>
+        <td>Převzal technik / pracovník</td>
+        <td class="num">{if $technician}{$technician->first_name} {$technician->last_name}{else}bude přiřazen{/if}</td>
+    </tr>
+</table>
+
+<p class="small muted">
+    Zákazník souhlasí s provedením diagnostiky. Před zahájením opravy, jejíž cena překročí odhad,
+    bude zákazník kontaktován a oprava bude zahájena až po jeho schválení. Servis neodpovídá za data
+    uložená v zařízení – doporučujeme provést zálohu.
+</p>
+
+<table class="signature">
+    <tr>
+        <td width="45%"><div class="sign-line">Podpis zákazníka (předal)</div></td>
+        <td width="10%"></td>
+        <td width="45%"><div class="sign-line">Podpis a razítko servisu (převzal)</div></td>
+    </tr>
+</table>
+{/block}

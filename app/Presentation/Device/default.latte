@@ -1,0 +1,63 @@
+{varType Nette\Database\Table\ActiveRow[] $devices}
+{varType Nette\Utils\Paginator $paginator}
+{varType App\DTO\Filter\DeviceFilter $filter}
+{varType array $typeOptions}
+{varType array $orderCounts}
+
+{block title}Zařízení{/block}
+
+{block content}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Zařízení</h1>
+        <p class="page-subtitle">Všechna evidovaná zařízení zákazníků</p>
+    </div>
+    <div class="page-actions">
+        <a n:if="$user->isAllowed('device', 'create')" n:href="add" class="btn btn-primary">{icon('plus')} Nové zařízení</a>
+    </div>
+</div>
+
+<section class="card">
+    <form method="get" action="{link default}" class="filter-bar" data-live-filter="list">
+        <div class="filter-search">
+            {icon('search')}
+            <input type="search" name="q" value="{$filter->query}" class="form-control" placeholder="Výrobce, model, sériové číslo, zákazník…" aria-label="Hledat zařízení">
+        </div>
+        <select name="type" class="form-select" aria-label="Typ zařízení">
+            <option value="">Všechny typy</option>
+            <option n:foreach="$typeOptions as $value => $label" value="{$value}" selected="{$filter->type?->value === $value}">{$label}</option>
+        </select>
+        <noscript><button class="btn btn-light">Filtrovat</button></noscript>
+    </form>
+
+    {snippet list}
+    {if $devices}
+        <div class="table-responsive">
+            <table class="table table-hover data-table mb-0">
+                <thead><tr><th>Zařízení</th><th>Sériové číslo</th><th>Zákazník</th><th class="text-center d-none d-md-table-cell">Zakázky</th><th class="text-end d-none d-lg-table-cell">Registrace</th></tr></thead>
+                <tbody>
+                <tr n:foreach="$devices as $device" class="row-link" data-href="{link detail, $device->id}">
+                    <td>
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="icon-tile">{icon(deviceIcon($device->type))}</span>
+                            <div>
+                                <a n:href="detail, $device->id" class="fw-semibold">{$device->manufacturer} {$device->model}</a>
+                                <div class="small text-secondary">{deviceTypeLabel($device->type)}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="font-monospace small">{$device->serial_number ?? '—'}</td>
+                    <td><a n:href="Customer:detail, $device->customer_id" class="small">{$device->customer->name}</a></td>
+                    <td class="text-center d-none d-md-table-cell"><span class="count-pill">{$orderCounts[$device->id] ?? 0}</span></td>
+                    <td class="text-end small text-secondary d-none d-lg-table-cell">{$device->registered_at|czDate}</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer">{include '../@paginator.latte', paginator: $paginator}</div>
+    {else}
+        {include '../@empty.latte', icon: 'search-x', title: 'Žádná zařízení', text: $filter->query ? 'Zkuste upravit hledaný výraz.' : 'Zařízení se evidují u zákazníků.'}
+    {/if}
+    {/snippet}
+</section>
+{/block}

@@ -1,0 +1,39 @@
+{varType Nette\Database\Table\ActiveRow|null $device}
+{varType Nette\Database\Table\ActiveRow|null $customer}
+{import '../@form.latte'}
+
+{block title}{$device ? 'Upravit zařízení' : 'Nové zařízení'}{/block}
+
+{block content}
+<div class="page-header">
+    <div>
+        <nav class="breadcrumbs">
+            {if $customer}<a n:href="Customer:detail, $customer->id">{$customer->name}</a>{else}<a n:href="default">Zařízení</a>{/if}
+            {if $device}<span>/</span> <a n:href="detail, $device->id">{$device->manufacturer} {$device->model}</a>{/if}
+        </nav>
+        <h1 class="page-title">{$device ? 'Upravit zařízení' : 'Nové zařízení'}</h1>
+    </div>
+</div>
+
+<form n:name="deviceForm" class="form-layout">
+    {include formErrors $form}
+    <section class="card">
+        <div class="card-header"><h2 class="card-title">{icon('laptop')} Údaje o zařízení</h2></div>
+        <div class="card-body row g-3">
+            {include field $form['customer_id'], class: 'col-md-8'}
+            {include field $form['type'], class: 'col-md-4'}
+            {include field $form['manufacturer'], class: 'col-md-4'}
+            {include field $form['model'], class: 'col-md-4'}
+            {include field $form['serial_number'], class: 'col-md-4'}
+            {include field $form['description']}
+        </div>
+    </section>
+    <datalist id="manufacturers">
+        <option n:foreach="['Apple', 'Lenovo', 'HP', 'Dell', 'Asus', 'Acer', 'MSI', 'Samsung', 'Xiaomi', 'Huawei', 'Google', 'Microsoft', 'Sony', 'Motorola', 'Nokia', 'OnePlus', 'Brother', 'Canon', 'Epson', 'LG'] as $m" value="{$m}"></option>
+    </datalist>
+    <div class="form-actions">
+        <a href="{$device ? $presenter->link('detail', $device->id) : ($customer ? $presenter->link('Customer:detail', $customer->id) : $presenter->link('default'))}" class="btn btn-light">Zrušit</a>
+        <button n:name="send" class="btn btn-primary">{icon('check')} Uložit zařízení</button>
+    </div>
+</form>
+{/block}

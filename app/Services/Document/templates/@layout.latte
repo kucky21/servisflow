@@ -1,0 +1,93 @@
+{varType App\Model\Enum\DocumentType $type}
+{varType App\DTO\CompanyProfile $company}
+{varType Nette\Database\Table\ActiveRow $order}
+{varType Nette\Database\Table\ActiveRow $customer}
+{varType Nette\Database\Table\ActiveRow $device}
+{varType Nette\Database\Table\ActiveRow|null $technician}
+{varType DateTimeImmutable $generatedAt}
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<style>
+    body { font-family: dejavusans; color: #0f172a; font-size: 9pt; line-height: 1.45; }
+    .muted { color: #64748b; }
+    .small { font-size: 7.5pt; }
+    h1 { font-size: 17pt; margin: 0; color: #0f172a; letter-spacing: -0.2pt; }
+    h2 { font-size: 10pt; margin: 5mm 0 2mm; color: #1e3a8a; text-transform: uppercase; letter-spacing: 0.6pt; border-bottom: 0.4mm solid #dbeafe; padding-bottom: 1mm; }
+    table { border-collapse: collapse; width: 100%; }
+    .header td { vertical-align: top; }
+    .brand { font-size: 14pt; font-weight: bold; color: #1d4ed8; }
+    .doc-box { background-color: #eff6ff; border: 0.3mm solid #bfdbfe; padding: 3mm 4mm; text-align: right; }
+    .doc-number { font-size: 13pt; font-weight: bold; color: #1e3a8a; }
+    .card { border: 0.3mm solid #e2e8f0; padding: 3mm 4mm; vertical-align: top; }
+    .card-title { font-size: 7pt; text-transform: uppercase; color: #64748b; letter-spacing: 0.5pt; margin-bottom: 1mm; }
+    .strong { font-weight: bold; }
+    .grid th { background-color: #f1f5f9; color: #334155; font-size: 7.5pt; text-transform: uppercase; text-align: left; padding: 2mm; border-bottom: 0.3mm solid #cbd5e1; }
+    .grid td { padding: 2mm; border-bottom: 0.2mm solid #e2e8f0; vertical-align: top; }
+    .num { text-align: right; white-space: nowrap; }
+    .totals td { padding: 1.3mm 2mm; }
+    .totals .grand td { font-size: 11pt; font-weight: bold; color: #1e3a8a; border-top: 0.5mm solid #1e3a8a; padding-top: 2mm; }
+    .text-block { border: 0.3mm solid #e2e8f0; background-color: #f8fafc; padding: 3mm 4mm; }
+    .signature td { padding-top: 16mm; vertical-align: bottom; }
+    .sign-line { border-top: 0.3mm solid #475569; padding-top: 1.5mm; text-align: center; font-size: 8pt; color: #475569; }
+    .note { font-size: 7.5pt; color: #64748b; margin-top: 4mm; }
+    .badge { background-color: #e0e7ff; color: #3730a3; padding: 0.5mm 2mm; font-size: 8pt; }
+</style>
+</head>
+<body>
+
+<table class="header">
+    <tr>
+        <td width="55%">
+            <div class="brand">{$company->name}</div>
+            <div class="muted small">
+                {$company->getAddressLine()}<br>
+                IČO: {$company->ico}{if $company->dic} · DIČ: {$company->dic}{/if}<br>
+                {$company->phone} · {$company->email}{if $company->web} · {$company->web}{/if}
+            </div>
+        </td>
+        <td width="45%" class="doc-box">
+            <h1>{$type->label()}</h1>
+            <div class="doc-number">{$order->order_number}</div>
+            <div class="muted small">Vystaveno {$generatedAt|czDateTime}</div>
+        </td>
+    </tr>
+</table>
+
+<br>
+
+<table>
+    <tr>
+        <td width="50%" class="card">
+            <div class="card-title">Zákazník</div>
+            <div class="strong">{$customer->name}</div>
+            {if $customer->contact_person}<div>{$customer->contact_person}</div>{/if}
+            {if $customer->street}<div>{$customer->street}</div>{/if}
+            {if $customer->city}<div>{$customer->zip} {$customer->city}</div>{/if}
+            <div class="muted small">
+                {if $customer->ico}IČO: {$customer->ico}{if $customer->dic} · DIČ: {$customer->dic}{/if}<br>{/if}
+                {$customer->phone}{if $customer->phone && $customer->email} · {/if}{$customer->email}
+            </div>
+        </td>
+        <td width="50%" class="card">
+            <div class="card-title">Zařízení</div>
+            <div class="strong">{$device->manufacturer} {$device->model}</div>
+            <div>{deviceTypeLabel($device->type)}</div>
+            <div class="muted small">
+                Sériové číslo: {$device->serial_number ?? '—'}<br>
+                Přijato: {$order->received_at|czDateTime}
+                {if $order->due_date} · Předpokládaný termín: {$order->due_date|czDate}{/if}
+            </div>
+        </td>
+    </tr>
+</table>
+
+{block content}{/block}
+
+{if $company->documentFooter}
+    <div class="note">{$company->documentFooter}</div>
+{/if}
+
+</body>
+</html>

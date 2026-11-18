@@ -1,0 +1,88 @@
+{varType Nette\Database\Table\ActiveRow[] $customers}
+{varType Nette\Utils\Paginator $paginator}
+{varType App\DTO\Filter\CustomerFilter $filter}
+{varType array $typeOptions}
+{varType array $deviceCounts}
+{varType array $orderCounts}
+
+{block title}Zákazníci{/block}
+
+{block content}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Zákazníci</h1>
+        <p class="page-subtitle">Evidence zákazníků, jejich zařízení a historie zakázek</p>
+    </div>
+    <div class="page-actions">
+        <a n:if="$user->isAllowed('customer', 'create')" n:href="add" class="btn btn-primary">{icon('user-plus')} Nový zákazník</a>
+    </div>
+</div>
+
+<section class="card">
+    <form method="get" action="{link default}" class="filter-bar" data-live-filter="list">
+        <div class="filter-search">
+            {icon('search')}
+            <input type="search" name="q" value="{$filter->query}" class="form-control" placeholder="Jméno, e-mail, telefon, IČO, město…" aria-label="Hledat zákazníky">
+        </div>
+        <select name="type" class="form-select" aria-label="Typ zákazníka">
+            <option value="">Všechny typy</option>
+            <option n:foreach="$typeOptions as $value => $label" value="{$value}" selected="{$filter->type?->value === $value}">{$label}</option>
+        </select>
+        <select name="sort" class="form-select" aria-label="Řazení">
+            <option value="name" selected="{$filter->sort === 'name'}">Dle názvu</option>
+            <option value="newest" selected="{$filter->sort === 'newest'}">Nejnovější</option>
+            <option value="city" selected="{$filter->sort === 'city'}">Dle města</option>
+        </select>
+        <noscript><button class="btn btn-light">Filtrovat</button></noscript>
+    </form>
+
+    {snippet list}
+    {if $customers}
+        <div class="table-responsive">
+            <table class="table table-hover data-table mb-0">
+                <thead>
+                <tr>
+                    <th>Zákazník</th>
+                    <th>Kontakt</th>
+                    <th class="d-none d-lg-table-cell">Adresa</th>
+                    <th class="text-center d-none d-md-table-cell">Zařízení</th>
+                    <th class="text-center d-none d-md-table-cell">Zakázky</th>
+                    <th class="text-end d-none d-xl-table-cell">Vytvořeno</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr n:foreach="$customers as $customer" class="row-link" data-href="{link detail, $customer->id}">
+                    <td>
+                        <div class="d-flex align-items-center gap-3">
+                            <span n:class="avatar, avatar-sm, $customer->type === 'company' ? avatar-company">{$customer->name|initials}</span>
+                            <div>
+                                <a n:href="detail, $customer->id" class="fw-semibold">{$customer->name}</a>
+                                <div class="small text-secondary">
+                                    {customerTypeLabel($customer->type)}{if $customer->ico} · IČO {$customer->ico}{/if}
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div n:if="$customer->email" class="small">{$customer->email}</div>
+                        <div n:if="$customer->phone" class="small text-secondary">{$customer->phone}</div>
+                    </td>
+                    <td class="d-none d-lg-table-cell small text-secondary">
+                        {if $customer->city}{$customer->street}<br>{$customer->zip} {$customer->city}{else}—{/if}
+                    </td>
+                    <td class="text-center d-none d-md-table-cell"><span class="count-pill">{$deviceCounts[$customer->id] ?? 0}</span></td>
+                    <td class="text-center d-none d-md-table-cell"><span class="count-pill">{$orderCounts[$customer->id] ?? 0}</span></td>
+                    <td class="text-end d-none d-xl-table-cell small text-secondary">{$customer->created_at|czDate}</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer">{include '../@paginator.latte', paginator: $paginator}</div>
+    {elseif $filter->query || $filter->type}
+        {include '../@empty.latte', icon: 'search-x', title: 'Nic nenalezeno', text: 'Zkuste upravit hledaný výraz nebo filtry.'}
+    {else}
+        {include '../@empty.latte', icon: 'users', title: 'Zatím žádní zákazníci', text: 'Založte prvního zákazníka a jeho zařízení.', actionUrl: $user->isAllowed('customer', 'create') ? $presenter->link('add') : null, actionLabel: 'Nový zákazník'}
+    {/if}
+    {/snippet}
+</section>
+{/block}

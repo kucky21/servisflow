@@ -1,0 +1,77 @@
+{varType Nette\Database\Table\ActiveRow[] $items}
+{varType Nette\Utils\Paginator $paginator}
+{varType App\DTO\Filter\InventoryFilter $filter}
+{varType int $lowStockTotal}
+{varType string $stockValue}
+{varType bool $canManage}
+
+{block title}Sklad{/block}
+
+{block content}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Skladové položky</h1>
+        <p class="page-subtitle">Náhradní díly a spotřební materiál{if $canManage} · hodnota skladu {$stockValue|money} (nákupní ceny){/if}</p>
+    </div>
+    <div class="page-actions">
+        <a n:if="$canManage" n:href="movements" class="btn btn-light">{icon('arrow-left-right')} Pohyby</a>
+        <a n:if="$user->isAllowed('inventory', 'create')" n:href="add" class="btn btn-primary">{icon('package-plus')} Nová položka</a>
+    </div>
+</div>
+
+<div n:if="$lowStockTotal > 0 && !$filter->lowStockOnly" class="alert alert-warning d-flex align-items-center gap-2">
+    {icon('triangle-alert')}
+    <span><strong>{$lowStockTotal}</strong> {$lowStockTotal === 1 ? 'položka je' : 'položek je'} na minimální zásobě nebo pod ní.</span>
+    <a n:href="default, low => 1" class="ms-auto btn btn-sm btn-warning">Zobrazit</a>
+</div>
+
+<section class="card">
+    <form method="get" action="{link default}" class="filter-bar" data-live-filter="list">
+        <div class="filter-search">
+            {icon('search')}
+            <input type="search" name="q" value="{$filter->query}" class="form-control" placeholder="SKU, název, popis…" aria-label="Hledat položky">
+        </div>
+        <label class="filter-check"><input type="checkbox" name="low" value="1" class="form-check-input" checked="{$filter->lowStockOnly}"> Jen nízký stav</label>
+        <label class="filter-check" n:if="$canManage"><input type="checkbox" name="inactive" value="1" class="form-check-input" checked="{$filter->includeInactive}"> Včetně neaktivních</label>
+        <noscript><button class="btn btn-light">Filtrovat</button></noscript>
+    </form>
+
+    {snippet list}
+    {if $items}
+        <div class="table-responsive">
+            <table class="table table-hover data-table mb-0">
+                <thead>
+                <tr>
+                    <th>SKU</th>
+                    <th>Položka</th>
+                    <th class="text-end">Skladem</th>
+                    <th class="text-end d-none d-md-table-cell">Minimum</th>
+                    <th class="text-end d-none d-lg-table-cell" n:if="$canManage">Nákup</th>
+                    <th class="text-end">Prodej</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr n:foreach="$items as $item" n:class="row-link, !$item->is_active ? row-muted" data-href="{link detail, $item->id}">
+                    <td class="font-monospace small text-nowrap">{$item->sku}</td>
+                    <td>
+                        <a n:href="detail, $item->id" class="fw-semibold">{$item->name}</a>
+                        <span n:if="!$item->is_active" class="badge-status tone-slate ms-1">neaktivní</span>
+                        <div class="small text-secondary text-truncate-200" n:if="$item->description">{$item->description}</div>
+                    </td>
+                    <td class="text-end">
+                        <span n:class="stock-pill, $item->quantity === 0 ? 'stock-out' : ($item->quantity <= $item->min_quantity ? 'stock-low' : 'stock-ok')">{$item->quantity} {$item->unit}</span>
+                    </td>
+                    <td class="text-end small text-secondary d-none d-md-table-cell">{$item->min_quantity}</td>
+                    <td class="text-end small d-none d-lg-table-cell" n:if="$canManage">{$item->purchase_price|money}</td>
+                    <td class="text-end small fw-semibold">{$item->sale_price|money}</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer">{include '../@paginator.latte', paginator: $paginator}</div>
+    {else}
+        {include '../@empty.latte', icon: 'package-search', title: 'Žádné položky', text: $filter->query || $filter->lowStockOnly ? 'Filtru neodpovídá žádná položka.' : 'Sklad je prázdný.', actionUrl: $user->isAllowed('inventory', 'create') ? $presenter->link('add') : null, actionLabel: 'Nová položka'}
+    {/if}
+    {/snippet}
+</section>
+{/block}

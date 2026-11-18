@@ -1,0 +1,85 @@
+# ServisHub – lokální vývojové prostředí
+#   docker compose up --build
+# Hodnoty se načítají z .env (viz .env.example). Výchozí hodnoty níže slouží
+# výhradně pro lokální vývoj – v produkci je vždy nastavte přes prostředí.
+
+name: servishub
+
+x-app-env: &app-env
+  APP_ENV: ${APP_ENV:-dev}
+  APP_DEBUG: ${APP_DEBUG:-1}
+  APP_URL: ${APP_URL:-http://localhost:8080}
+  DB_HOST: database
+  DB_PORT: 5432
+  DB_NAME: ${DB_NAME:-servishub}
+  DB_USER: ${DB_USER:-servishub}
+  DB_PASSWORD: ${DB_PASSWORD:-servishub_local}
+  DB_TEST_NAME: ${DB_NAME:-servishub}_test
+  SEED_DEMO_DATA: ${SEED_DEMO_DATA:-1}
+  DEMO_PASSWORD: ${DEMO_PASSWORD:-Demo1234!}
+
+services:
+  php:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      target: dev
+    environment:
+      <<: *app-env
+    volumes:
+      - ./:/var/www/html
+      # vendor a cache v pojmenovaných volumes – výrazně rychlejší než bind mount (Docker Desktop)
+      - vendor:/var/www/html/vendor
+      - cache:/var/www/html/temp
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "SCRIPT_NAME=/fpm-ping SCRIPT_FILENAME=/fpm-ping REQUEST_METHOD=GET cgi-fcgi -bind -connect 127.0.0.1:9000 | grep -q pong"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 120s
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "${APP_PORT:-8080}:80"
+    volumes:
+      - ./www:/var/www/html/www:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      php:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/nginx-health | grep -q ok"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  database:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:-servishub}
+      POSTGRES_USER: ${DB_USER:-servishub}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-servishub_local}
+      TZ: Europe/Prague
+      PGTZ: Europe/Prague
+    ports:
+      - "${DB_PUBLISHED_PORT:-54320}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  vendor:
+  cache:

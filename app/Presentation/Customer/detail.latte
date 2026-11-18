@@ -1,0 +1,114 @@
+{varType Nette\Database\Table\ActiveRow $customer}
+{varType Nette\Database\Table\ActiveRow[] $devices}
+{varType Nette\Database\Table\ActiveRow[] $orders}
+{varType bool $hasOrders}
+{varType int $completedCount}
+{varType string $completedTotal}
+
+{block title}{$customer->name}{/block}
+
+{block content}
+<div class="page-header">
+    <div class="d-flex align-items-center gap-3">
+        <span n:class="avatar, avatar-lg, $customer->type === 'company' ? avatar-company">{$customer->name|initials}</span>
+        <div>
+            <nav class="breadcrumbs"><a n:href="default">Zákazníci</a></nav>
+            <h1 class="page-title">{$customer->name}</h1>
+            <p class="page-subtitle">{customerTypeLabel($customer->type)} · zákazníkem od {$customer->created_at|czDate}</p>
+        </div>
+    </div>
+    <div class="page-actions">
+        <a n:if="$user->isAllowed('order', 'create')" n:href="Order:add, customerId => $customer->id" class="btn btn-primary">{icon('clipboard-plus')} Nová zakázka</a>
+        <a n:if="$user->isAllowed('customer', 'edit')" n:href="edit, $customer->id" class="btn btn-light">{icon('pencil')} Upravit</a>
+        <button n:if="$user->isAllowed('customer', 'delete')" type="button" class="btn btn-light text-danger"
+                data-confirm="Smazat zákazníka {$customer->name}?"
+                data-confirm-text="{$hasOrders ? 'Zákazník má zakázky – smazání bude odmítnuto.' : 'Smažou se i jeho zařízení. Akci nelze vrátit.'}"
+                data-action="{link delete!, id => $customer->id}" data-method="post">
+            {icon('trash-2')}
+        </button>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-4">
+        <section class="card">
+            <div class="card-header"><h2 class="card-title">Kontaktní údaje</h2></div>
+            <div class="card-body">
+                <dl class="info-list">
+                    <dt n:if="$customer->contact_person">Kontaktní osoba</dt>
+                    <dd n:if="$customer->contact_person">{$customer->contact_person}</dd>
+                    <dt>E-mail</dt>
+                    <dd>{if $customer->email}<a href="mailto:{$customer->email}">{$customer->email}</a>{else}—{/if}</dd>
+                    <dt>Telefon</dt>
+                    <dd>{if $customer->phone}<a href="tel:{$customer->phone|replace:' ', ''}">{$customer->phone}</a>{else}—{/if}</dd>
+                    <dt>Adresa</dt>
+                    <dd>{if $customer->city}{$customer->street}<br>{$customer->zip} {$customer->city}{else}—{/if}</dd>
+                    <dt n:if="$customer->ico">IČO / DIČ</dt>
+                    <dd n:if="$customer->ico">{$customer->ico}{if $customer->dic} / {$customer->dic}{/if}</dd>
+                </dl>
+                <div n:if="$customer->note" class="note-box mt-3">{icon('sticky-note')} <div>{$customer->note|breakLines}</div></div>
+            </div>
+        </section>
+
+        <section class="card mt-4">
+            <div class="card-body">
+                <div class="stat-row">
+                    <div><div class="stat-value">{count($orders)}</div><div class="stat-label">zakázek celkem</div></div>
+                    <div><div class="stat-value">{$completedCount}</div><div class="stat-label">dokončených</div></div>
+                    <div><div class="stat-value stat-value-sm">{$completedTotal|money}</div><div class="stat-label">obrat vč. DPH</div></div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div class="col-xl-8">
+        <section class="card">
+            <div class="card-header">
+                <h2 class="card-title">{icon('laptop')} Zařízení <span class="count-pill">{count($devices)}</span></h2>
+                <a n:if="$user->isAllowed('device', 'create')" n:href="Device:add, customerId => $customer->id" class="btn btn-sm btn-light">{icon('plus')} Přidat zařízení</a>
+            </div>
+            {if $devices}
+                <div class="device-grid">
+                    <a n:foreach="$devices as $device" n:href="Device:detail, $device->id" class="device-tile">
+                        <span class="device-tile-icon">{icon(deviceIcon($device->type))}</span>
+                        <span class="device-tile-body">
+                            <strong>{$device->manufacturer} {$device->model}</strong>
+                            <span class="small text-secondary">{deviceTypeLabel($device->type)}{if $device->serial_number} · SN {$device->serial_number}{/if}</span>
+                        </span>
+                        {icon('chevron-right', 'text-secondary')}
+                    </a>
+                </div>
+            {else}
+                <div class="card-body">
+                    {include '../@empty.latte', icon: 'laptop', title: 'Žádná zařízení', text: 'Zákazník zatím nemá evidované zařízení.', actionUrl: $user->isAllowed('device', 'create') ? $presenter->link('Device:add', ['customerId' => $customer->id]) : null, actionLabel: 'Přidat zařízení'}
+                </div>
+            {/if}
+        </section>
+
+        <section class="card mt-4">
+            <div class="card-header"><h2 class="card-title">{icon('history')} Historie zakázek</h2></div>
+            {if $orders}
+                <div class="table-responsive">
+                    <table class="table table-hover data-table mb-0">
+                        <thead><tr><th>Zakázka</th><th>Zařízení</th><th>Stav</th><th class="text-end">Přijato</th><th class="text-end">Cena</th></tr></thead>
+                        <tbody>
+                        <tr n:foreach="$orders as $order" class="row-link" data-href="{link Order:detail, $order->id}">
+                            <td><a n:href="Order:detail, $order->id" class="fw-semibold text-nowrap">{$order->order_number}</a>
+                                <div class="small text-secondary text-truncate-200">{$order->problem_description}</div></td>
+                            <td class="small">{$order->device->manufacturer} {$order->device->model}</td>
+                            <td>{statusBadge($order->status)}</td>
+                            <td class="text-end small">{$order->received_at|czDate}</td>
+                            <td class="text-end small fw-semibold">{$order->final_price ?? $order->estimated_price|money}</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            {else}
+                <div class="card-body">
+                    {include '../@empty.latte', icon: 'clipboard-list', title: 'Bez zakázek', text: 'Zákazník zatím nemá žádnou servisní zakázku.'}
+                </div>
+            {/if}
+        </section>
+    </div>
+</div>
+{/block}

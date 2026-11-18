@@ -1,0 +1,24 @@
+{varType array $entries}
+{if $entries}
+    <ul class="timeline">
+        <li n:foreach="$entries as $entry">
+            <span class="timeline-dot tone-{$entry['tone']}">{icon($entry['icon'])}</span>
+            <div class="timeline-body">
+                <div class="d-flex justify-content-between flex-wrap gap-2">
+                    <strong>{$entry['title']}</strong>
+                    <span class="small text-secondary" title="{$entry['time']|czDateTime}">{$entry['time']|czDateTime}</span>
+                </div>
+                <div class="small text-secondary">{$entry['user'] ?? 'Systém'}</div>
+                <div n:if="$entry['note']" class="timeline-note">{$entry['note']|breakLines}</div>
+                <ul n:if="$entry['changes']" class="change-list">
+                    <li n:foreach="$entry['changes'] as $change">
+                        <span class="change-label">{$change['label']}:</span>
+                        {if $change['old'] !== ''}<span class="change-old">{$change['old']}</span> → {/if}<span class="change-new">{$change['new']}</span>
+                    </li>
+                </ul>
+            </div>
+        </li>
+    </ul>
+{else}
+    {include '../../Presentation/@empty.latte', icon: 'history', title: 'Bez historie'}
+{/if}

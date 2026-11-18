@@ -1,0 +1,43 @@
+{varType Nette\Database\Table\ActiveRow|null $item}
+{import '../@form.latte'}
+
+{block title}{$item ? 'Upravit položku' : 'Nová skladová položka'}{/block}
+
+{block content}
+<div class="page-header">
+    <div>
+        <nav class="breadcrumbs"><a n:href="default">Sklad</a>{if $item} <span>/</span> <a n:href="detail, $item->id">{$item->name}</a>{/if}</nav>
+        <h1 class="page-title">{$item ? 'Upravit položku' : 'Nová skladová položka'}</h1>
+        <p class="page-subtitle" n:if="$item">Množství na skladě se mění pouze příjmem, výdejem nebo inventurou.</p>
+    </div>
+</div>
+
+<form n:name="itemForm" class="form-layout">
+    {include formErrors $form}
+    <section class="card">
+        <div class="card-header"><h2 class="card-title">{icon('package')} Položka</h2></div>
+        <div class="card-body row g-3">
+            {include field $form['sku'], class: 'col-md-4'}
+            {include field $form['name'], class: 'col-md-6'}
+            {include field $form['unit'], class: 'col-md-2'}
+            {include field $form['description']}
+        </div>
+    </section>
+    <section class="card">
+        <div class="card-header"><h2 class="card-title">{icon('banknote')} Ceny a zásoba</h2></div>
+        <div class="card-body row g-3">
+            {include field $form['purchase_price'], class: 'col-md-3'}
+            {include field $form['sale_price'], class: 'col-md-3'}
+            {include field $form['min_quantity'], class: 'col-md-3', hint: 'Pod touto hranicí systém upozorní.'}
+            {ifset $form['initial_quantity']}
+                {include field $form['initial_quantity'], class: 'col-md-3', hint: 'Zapíše se jako příjem na sklad.'}
+            {/ifset}
+            {include field $form['is_active']}
+        </div>
+    </section>
+    <div class="form-actions">
+        <a href="{$item ? $presenter->link('detail', $item->id) : $presenter->link('default')}" class="btn btn-light">Zrušit</a>
+        <button n:name="send" class="btn btn-primary">{icon('check')} {$form['send']->getCaption()}</button>
+    </div>
+</form>
+{/block}

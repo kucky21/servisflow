@@ -1,0 +1,7 @@
+{parameters string $icon = 'inbox', string $title = 'Nic tu není', ?string $text = null, ?string $actionUrl = null, ?string $actionLabel = null}
+<div class="empty-state">
+    <div class="empty-icon">{icon($icon)}</div>
+    <div class="empty-title">{$title}</div>
+    <p class="empty-text" n:if="$text">{$text}</p>
+    <a n:if="$actionUrl" href="{$actionUrl}" class="btn btn-primary btn-sm mt-2">{icon('plus')} {$actionLabel}</a>
+</div>

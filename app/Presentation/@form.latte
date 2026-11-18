@@ -1,0 +1,46 @@
+{*
+ * Sdílené bloky pro vykreslení polí formuláře v Bootstrap 5 stylu.
+ * Použití: {import '../@form.latte'} a {include field $form['name'], class: 'col-md-6'}
+ *}
+
+{define field, Nette\Forms\Controls\BaseControl $input, string $class = 'col-12', ?string $hint = null}
+    {var $type = $input->getOption('type')}
+    {var $invalid = $input->hasErrors()}
+    {var $desc = $hint ?? $input->getOption('description')}
+    <div class="{$class}">
+        {if $type === 'checkbox'}
+            <div class="form-check form-switch">
+                <input n:name="$input" n:class="form-check-input, $invalid ? is-invalid">
+                <label n:name="$input" class="form-check-label">{$input->getCaption()}</label>
+            </div>
+        {elseif $type === 'radio'}
+            <div class="form-label">{$input->getCaption()}</div>
+            <div class="segmented" role="radiogroup">
+                {foreach $input->getItems() as $key => $caption}
+                    {$input->getControlPart($key)->addClass('btn-check')}
+                    {$input->getLabelPart($key)->addClass('btn')}
+                {/foreach}
+            </div>
+        {else}
+            <label n:name="$input" class="form-label">
+                {$input->getCaption()}<span n:if="$input->isRequired()" class="required-mark" aria-hidden="true">*</span>
+            </label>
+            {if $type === 'select'}
+                <select n:name="$input" n:class="form-select, $invalid ? is-invalid"></select>
+            {elseif $type === 'textarea'}
+                <textarea n:name="$input" n:class="form-control, $invalid ? is-invalid"></textarea>
+            {else}
+                <input n:name="$input" n:class="form-control, $invalid ? is-invalid">
+            {/if}
+        {/if}
+        <div class="invalid-feedback" n:ifcontent>{foreach $input->getErrors() as $error}{$error}{sep}<br>{/sep}{/foreach}</div>
+        <div class="form-text" n:if="$desc">{$desc}</div>
+    </div>
+{/define}
+
+{define formErrors, Nette\Forms\Form $form}
+    <div n:if="$form->getOwnErrors()" class="alert alert-danger d-flex gap-2 align-items-start" role="alert">
+        {icon('circle-alert')}
+        <div>{foreach $form->getOwnErrors() as $error}<div>{$error}</div>{/foreach}</div>
+    </div>
+{/define}

@@ -1,0 +1,72 @@
+{
+    "name": "servishub/servishub",
+    "description": "ServisHub – informační systém pro servis notebooků, počítačů a mobilních zařízení (Nette Framework, PostgreSQL).",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "php": ">=8.4",
+        "ext-pdo_pgsql": "*",
+        "ext-intl": "*",
+        "ext-mbstring": "*",
+        "ext-gd": "*",
+        "nette/application": "^3.2",
+        "nette/bootstrap": "^3.2",
+        "nette/caching": "^3.3",
+        "nette/database": "^3.2",
+        "nette/di": "^3.2",
+        "nette/forms": "^3.2",
+        "nette/http": "^3.3",
+        "nette/security": "^3.2",
+        "nette/utils": "^4.0",
+        "latte/latte": "^3.0",
+        "tracy/tracy": "^2.10",
+        "nextras/migrations": "^3.3",
+        "contributte/console": "^0.10",
+        "mpdf/mpdf": "^8.2",
+        "brick/math": "^0.12"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.5",
+        "phpstan/phpstan": "^2.1",
+        "phpstan/phpstan-nette": "^2.0",
+        "squizlabs/php_codesniffer": "^3.11"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "App\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "post-install-cmd": [
+            "@php bin/install-assets.php"
+        ],
+        "post-update-cmd": [
+            "@php bin/install-assets.php"
+        ],
+        "test": "phpunit",
+        "test:unit": "phpunit --testsuite unit",
+        "test:integration": "phpunit --testsuite integration",
+        "phpstan": "phpstan analyse --memory-limit=1G",
+        "cs": "phpcs",
+        "cs:fix": "phpcbf",
+        "qa": [
+            "@cs",
+            "@phpstan",
+            "@test"
+        ]
+    },
+    "config": {
+        "sort-packages": true,
+        "optimize-autoloader": true,
+        "platform": {
+            "php": "8.4.0"
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

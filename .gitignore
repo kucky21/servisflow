@@ -1,0 +1,38 @@
+# Závislosti
+/vendor/
+/composer.phar
+
+# Runtime (cache, logy) – adresáře drží .gitkeep
+/temp/*
+!/temp/.gitkeep
+/log/*
+!/log/.gitkeep
+
+# Generované assety (kopírují se z Composer balíčků)
+/www/assets/vendor/
+
+# Lokální konfigurace a tajemství
+.env
+.env.*
+!.env.example
+/config/local.neon
+
+# Nástroje kvality kódu
+.phpunit.cache/
+.phpunit.result.cache
+.phpcs-cache
+/coverage/
+
+# Lokální zadání a nastavení AI asistenta
+.claude.md
+/claude.md
+/CLAUDE.md
+/.claude/
+
+# IDE a systémové soubory
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini

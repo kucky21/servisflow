@@ -1,0 +1,47 @@
+{varType Nette\Database\Table\ActiveRow $profile}
+{import '../@form.latte'}
+
+{block title}Můj profil{/block}
+
+{block content}
+<div class="page-header">
+    <div class="d-flex align-items-center gap-3">
+        <span class="avatar avatar-lg">{($profile->first_name . ' ' . $profile->last_name)|initials}</span>
+        <div>
+            <h1 class="page-title">{$profile->first_name} {$profile->last_name}</h1>
+            <p class="page-subtitle">{roleLabel($profile->role)} · {$profile->email}</p>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <section class="card">
+            <div class="card-header"><h2 class="card-title">{icon('user')} Účet</h2></div>
+            <div class="card-body">
+                <dl class="info-list">
+                    <dt>E-mail</dt><dd>{$profile->email}</dd>
+                    <dt>Telefon</dt><dd>{$profile->phone ?? '—'}</dd>
+                    <dt>Role</dt><dd>{roleLabel($profile->role)}</dd>
+                    <dt>Poslední přihlášení</dt><dd>{$profile->last_login_at|czDateTime}</dd>
+                    <dt>Účet vytvořen</dt><dd>{$profile->created_at|czDate}</dd>
+                </dl>
+            </div>
+        </section>
+    </div>
+    <div class="col-lg-7">
+        <section class="card">
+            <div class="card-header"><h2 class="card-title">{icon('key-round')} Změna hesla</h2></div>
+            <div class="card-body">
+                <form n:name="passwordForm" class="row g-3">
+                    {include formErrors $form}
+                    {include field $form['current_password']}
+                    {include field $form['new_password'], class: 'col-md-6'}
+                    {include field $form['new_password_confirm'], class: 'col-md-6'}
+                    <div class="col-12 text-end"><button n:name="send" class="btn btn-primary">{icon('check')} Změnit heslo</button></div>
+                </form>
+            </div>
+        </section>
+    </div>
+</div>
+{/block}

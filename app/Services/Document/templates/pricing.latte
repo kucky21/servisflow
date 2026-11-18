@@ -1,0 +1,24 @@
+{layout '@layout.latte'}
+
+{block content}
+<h2>Předmět opravy</h2>
+<div class="text-block">{$order->problem_description|breakLines}</div>
+
+{include '@pricing-table.latte', breakdown: $breakdown, workLogs: $workLogs, materials: $materials}
+
+{if $order->estimated_price !== null}
+<p class="small muted">Původní odhad ceny při převzetí: {$order->estimated_price|money} vč. DPH.</p>
+{/if}
+<p class="small muted">
+    Tento dokument je cenovým podkladem servisní zakázky a nenahrazuje daňový doklad.
+    {if $company->bankAccount}Platbu lze provést na účet {$company->bankAccount}, variabilní symbol {str_replace(['SRV-', '-'], '', $order->order_number)}.{/if}
+</p>
+
+<table class="signature">
+    <tr>
+        <td width="45%"><div class="sign-line">Odsouhlasil (zákazník)</div></td>
+        <td width="10%"></td>
+        <td width="45%"><div class="sign-line">Vystavil (servis)</div></td>
+    </tr>
+</table>
+{/block}

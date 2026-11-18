@@ -1,0 +1,110 @@
+# ServisHub – společná konfigurace
+# Citlivé hodnoty se čtou výhradně z proměnných prostředí (%env.*%).
+
+parameters:
+	appName: ServisHub
+	pdfTempDir: %tempDir%/mpdf
+	security:
+		maxFailedLogins: 5
+		lockoutMinutes: 15
+
+
+application:
+	errorPresenter:
+		4xx: Error:Error4xx
+		5xx: Error:Error5xx
+	mapping: App\Presentation\*\**Presenter
+	scanDirs: false
+
+
+latte:
+	strictTypes: true
+	strictParsing: true
+	locale: cs_CZ
+	extensions:
+		- App\Core\Latte\AppLatteExtension
+
+
+database:
+	dsn: 'pgsql:host=%env.DB_HOST%;port=%env.DB_PORT%;dbname=%env.DB_NAME%'
+	user: %env.DB_USER%
+	password: %env.DB_PASSWORD%
+	options:
+		lazy: true
+		newDateTime: true
+
+
+session:
+	name: SERVISHUB_SID
+	expiration: 8 hours
+	autoStart: always
+	cookieSamesite: Lax
+	cookieHttponly: true
+	savePath: %tempDir%/sessions
+	useStrictMode: true
+
+
+http:
+	cookieSecure: auto
+	headers:
+		X-Powered-By: null
+		X-Content-Type-Options: nosniff
+		Referrer-Policy: strict-origin-when-cross-origin
+	frames: SAMEORIGIN
+	csp:
+		default-src: "'self'"
+		script-src: [nonce, strict-dynamic, "'self'", 'https://cdn.jsdelivr.net', 'https://unpkg.com']
+		style-src: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://fonts.googleapis.com']
+		font-src: ["'self'", 'https://fonts.gstatic.com', 'https://cdn.jsdelivr.net', 'data:']
+		img-src: ["'self'", 'data:']
+		connect-src: "'self'"
+		form-action: "'self'"
+		frame-ancestors: "'self'"
+		object-src: "'none'"
+		base-uri: "'self'"
+
+
+security:
+	debugger: true
+	authentication:
+		storage: session
+		expiration: 8 hours
+
+
+di:
+	export:
+		parameters: no
+		tags: no
+
+
+tracy:
+	strictMode: true
+	maxDepth: 6
+
+
+extensions:
+	console: Contributte\Console\DI\ConsoleExtension(%consoleMode%)
+	migrations: Nextras\Migrations\Bridges\NetteDI\MigrationsExtension
+
+
+console:
+	name: ServisHub
+	version: '1.0'
+	catchExceptions: true
+
+
+migrations:
+	dir: %rootDir%/migrations
+	driver: pgsql
+	dbal: nette
+	withDummyData: false
+
+
+decorator:
+	Nette\Database\Connection:
+		setup:
+			- setRowNormalizer(@App\Core\Database\RowNormalizer)
+
+
+includes:
+	- services.neon

@@ -1,0 +1,66 @@
+{varType Nette\Database\Table\ActiveRow|null $order}
+{import '../@form.latte'}
+
+{block title}{$order ? 'Upravit zakázku ' . $order->order_number : 'Přijmout zakázku'}{/block}
+
+{block content}
+<div class="page-header">
+    <div>
+        <nav class="breadcrumbs"><a n:href="default">Zakázky</a>{if $order} <span>/</span> <a n:href="detail, $order->id">{$order->order_number}</a>{/if}</nav>
+        <h1 class="page-title">{$order ? 'Upravit zakázku' : 'Přijmout zakázku do servisu'}</h1>
+        <p class="page-subtitle" n:if="$order">{$order->customer->name} · {$order->device->manufacturer} {$order->device->model}</p>
+        <p class="page-subtitle" n:if="!$order">Číslo zakázky se přidělí automaticky po uložení.</p>
+    </div>
+</div>
+
+<form n:name="orderForm" class="form-layout" data-order-form data-devices-url="{link devices!}">
+    {include formErrors $form}
+
+    <section class="card" n:if="!$order">
+        <div class="card-header">
+            <h2 class="card-title">{icon('user')} Zákazník a zařízení</h2>
+            <div class="d-flex gap-2">
+                <a n:href="Customer:add" class="btn btn-sm btn-light" target="_blank">{icon('user-plus')} Nový zákazník</a>
+                <a href="#" class="btn btn-sm btn-light" data-new-device-link="{link Device:add}" target="_blank">{icon('plus')} Nové zařízení</a>
+            </div>
+        </div>
+        <div class="card-body row g-3">
+            {include field $form['customer_id'], class: 'col-md-6'}
+            {include field $form['device_id'], class: 'col-md-6'}
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="card-header"><h2 class="card-title">{icon('stethoscope')} Závada a příjem</h2></div>
+        <div class="card-body row g-3">
+            {include field $form['problem_description']}
+            {include field $form['accessories'], class: 'col-md-12'}
+            {include field $form['diagnosis'], class: 'col-md-12', hint: $order ? null : 'Lze vyplnit později během diagnostiky.'}
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="card-header"><h2 class="card-title">{icon('calendar-clock')} Plánování</h2></div>
+        <div class="card-body row g-3">
+            {include field $form['priority'], class: 'col-md-4'}
+            {include field $form['assigned_technician_id'], class: 'col-md-4'}
+            {include field $form['due_date'], class: 'col-md-4'}
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="card-header"><h2 class="card-title">{icon('banknote')} Ceny</h2></div>
+        <div class="card-body row g-3">
+            {include field $form['estimated_price'], class: 'col-md-4'}
+            {include field $form['hourly_rate'], class: 'col-md-4'}
+            {include field $form['discount_percent'], class: 'col-md-4'}
+            {include field $form['internal_note']}
+        </div>
+    </section>
+
+    <div class="form-actions">
+        <a href="{$order ? $presenter->link('detail', $order->id) : $presenter->link('default')}" class="btn btn-light">Zrušit</a>
+        <button n:name="send" class="btn btn-primary">{icon('check')} {$form['send']->getCaption()}</button>
+    </div>
+</form>
+{/block}

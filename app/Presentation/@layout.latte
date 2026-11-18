@@ -1,0 +1,128 @@
+{varType App\Security\Actor $actor}
+{varType int $lowStockCount}
+{varType string $roleLabel}
+{var $current = $presenter->getName()}
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{ifset title}{include title|stripHtml|trim} · {/ifset}ServisHub</title>
+    <link rel="icon" href="{$basePath}/assets/img/favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{$basePath}/assets/css/app.css?v=1.0.0">
+</head>
+<body class="app-body">
+<div class="app-shell">
+    <aside class="sidebar" id="sidebar" aria-label="Hlavní navigace">
+        <a n:href="Dashboard:default" class="sidebar-brand">
+            <span class="brand-mark">{icon('wrench')}</span>
+            <span class="brand-text">Servis<strong>Hub</strong></span>
+        </a>
+
+        <nav class="sidebar-nav">
+            <a n:href="Dashboard:default" n:class="nav-link, $current === 'Dashboard' ? active">
+                {icon('layout-dashboard')} <span>Přehled</span>
+            </a>
+
+            <div class="nav-section">Servis</div>
+            <a n:href="Order:default" n:class="nav-link, $current === 'Order' ? active">
+                {icon('clipboard-list')} <span>{$actor->isTechnician() ? 'Moje zakázky' : 'Zakázky'}</span>
+            </a>
+            <a n:if="$user->isAllowed('customer', 'view')" n:href="Customer:default" n:class="nav-link, $current === 'Customer' ? active">
+                {icon('users')} <span>Zákazníci</span>
+            </a>
+            <a n:if="$user->isAllowed('device', 'view')" n:href="Device:default" n:class="nav-link, $current === 'Device' ? active">
+                {icon('laptop')} <span>Zařízení</span>
+            </a>
+
+            <div class="nav-section">Sklad</div>
+            <a n:href="Inventory:default" n:class="nav-link, $current === 'Inventory' && $presenter->getAction() !== 'movements' ? active">
+                {icon('package')} <span>Skladové položky</span>
+                <span n:if="$lowStockCount > 0" class="nav-badge" title="Položky pod minimální zásobou">{$lowStockCount}</span>
+            </a>
+            <a n:if="$user->isAllowed('inventory', 'edit')" n:href="Inventory:movements" n:class="nav-link, $current === 'Inventory' && $presenter->getAction() === 'movements' ? active">
+                {icon('arrow-left-right')} <span>Skladové pohyby</span>
+            </a>
+
+            {if $user->isAllowed('user', 'view')}
+                <div class="nav-section">Administrace</div>
+                <a n:href="User:default" n:class="nav-link, $current === 'User' ? active">
+                    {icon('user-cog')} <span>Uživatelé</span>
+                </a>
+                <a n:href="Settings:default" n:class="nav-link, $current === 'Settings' ? active">
+                    {icon('settings')} <span>Nastavení</span>
+                </a>
+                <a n:href="Audit:default" n:class="nav-link, $current === 'Audit' ? active">
+                    {icon('shield-check')} <span>Audit log</span>
+                </a>
+            {/if}
+        </nav>
+
+        <div class="sidebar-footer">
+            <a n:href="Profile:default" class="sidebar-user">
+                <span class="avatar">{$actor->name|initials}</span>
+                <span class="sidebar-user-text">
+                    <span class="name">{$actor->name}</span>
+                    <span class="role">{$roleLabel}</span>
+                </span>
+            </a>
+            <form action="{link logout!}" method="post" class="m-0">
+                <button type="submit" class="btn-icon" title="Odhlásit se" aria-label="Odhlásit se">{icon('log-out')}</button>
+            </form>
+        </div>
+    </aside>
+    <div class="sidebar-backdrop" data-sidebar-close></div>
+
+    <div class="main">
+        <header class="topbar">
+            <button type="button" class="btn-icon d-lg-none" data-sidebar-toggle aria-label="Menu">{icon('menu')}</button>
+            <form action="{link Order:default}" method="get" class="topbar-search" role="search">
+                {icon('search')}
+                <input type="search" name="q" placeholder="Hledat zakázku, zákazníka, sériové číslo…" aria-label="Hledat zakázky" value="{$presenter->getParameter('q')}" autocomplete="off">
+                <kbd class="d-none d-md-inline">/</kbd>
+            </form>
+            <div class="topbar-actions">
+                <a n:if="$user->isAllowed('order', 'create')" n:href="Order:add" class="btn btn-primary btn-sm">
+                    {icon('plus')} <span class="d-none d-sm-inline">Nová zakázka</span>
+                </a>
+            </div>
+        </header>
+
+        <main class="content" id="content">
+            {include content}
+        </main>
+    </div>
+</div>
+
+<div class="toast-stack" id="toast-stack" aria-live="polite" aria-atomic="false"></div>
+<script n:nonce type="application/json" id="flash-data">{array_map(fn($f) => ["message" => $f->message, "type" => $f->type], $flashes)}</script>
+
+{* Univerzální potvrzovací dialog pro destruktivní operace *}
+<div class="modal fade" id="confirm-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-body text-center p-4">
+                <div class="confirm-icon">{icon('triangle-alert')}</div>
+                <h2 class="h5 mt-3 mb-2" data-confirm-title>Opravdu pokračovat?</h2>
+                <p class="text-secondary small mb-0" data-confirm-text></p>
+            </div>
+            <div class="modal-footer border-0 pt-0 justify-content-center gap-2">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Zrušit</button>
+                <button type="button" class="btn btn-danger" data-confirm-accept>Potvrdit</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script n:nonce src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script n:nonce src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script n:nonce src="{$basePath}/assets/vendor/netteForms.min.js"></script>
+{block scripts}{/block}
+<script n:nonce src="{$basePath}/assets/js/app.js?v=1.0.0"></script>
+</body>
+</html>

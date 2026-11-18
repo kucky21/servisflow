@@ -1,0 +1,115 @@
+{varType Nette\Database\Table\ActiveRow[] $orders}
+{varType Nette\Utils\Paginator $paginator}
+{varType App\DTO\Filter\OrderFilter $filter}
+{varType array $statusOptions}
+{varType array $priorityOptions}
+{varType array $technicianOptions}
+{varType bool $hasFilters}
+{varType App\Security\Actor $actor}
+
+{block title}{$actor->isTechnician() ? 'Moje zakázky' : 'Servisní zakázky'}{/block}
+
+{block content}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{$actor->isTechnician() ? 'Moje zakázky' : 'Servisní zakázky'}</h1>
+        <p class="page-subtitle">{$paginator->getItemCount()} {$paginator->getItemCount() === 1 ? 'zakázka' : ($paginator->getItemCount() < 5 && $paginator->getItemCount() > 0 ? 'zakázky' : 'zakázek')} odpovídá filtru</p>
+    </div>
+    <div class="page-actions">
+        <a n:if="$user->isAllowed('order', 'create')" n:href="add" class="btn btn-primary">{icon('clipboard-plus')} Přijmout zakázku</a>
+    </div>
+</div>
+
+<div class="scope-tabs">
+    <a n:href="default, scope => 'active'" n:class="scope-tab, $filter->scope === 'active' && !$filter->status ? active">{icon('activity')} Rozpracované</a>
+    <a n:href="default, scope => 'done'" n:class="scope-tab, $filter->scope === 'done' && !$filter->status ? active">{icon('archive')} Uzavřené</a>
+    <a n:href="default, scope => 'all'" n:class="scope-tab, $filter->scope === 'all' && !$filter->status ? active">{icon('list')} Všechny</a>
+</div>
+
+<section class="card">
+    <form method="get" action="{link default}" class="filter-bar" data-live-filter="list">
+        <input type="hidden" name="scope" value="{$filter->scope}">
+        <div class="filter-search">
+            {icon('search')}
+            <input type="search" name="q" value="{$filter->query}" class="form-control" placeholder="Číslo zakázky, zákazník, závada, SN…" aria-label="Hledat zakázky">
+        </div>
+        <select name="status" class="form-select" aria-label="Stav">
+            <option value="">Všechny stavy</option>
+            <option n:foreach="$statusOptions as $value => $label" value="{$value}" selected="{$filter->status?->value === $value}">{$label}</option>
+        </select>
+        <select name="priority" class="form-select" aria-label="Priorita">
+            <option value="">Všechny priority</option>
+            <option n:foreach="$priorityOptions as $value => $label" value="{$value}" selected="{$filter->priority?->value === $value}">{$label}</option>
+        </select>
+        <select n:if="!$actor->isTechnician()" name="technician" class="form-select" aria-label="Technik">
+            <option value="">Všichni technici</option>
+            <option n:foreach="$technicianOptions as $value => $label" value="{$value}" selected="{$filter->technicianId === $value}">{$label}</option>
+        </select>
+        <label class="filter-check">
+            <input type="checkbox" name="overdue" value="1" class="form-check-input" checked="{$filter->overdueOnly}"> Po termínu
+        </label>
+        <label class="filter-check" n:if="!$actor->isTechnician()">
+            <input type="checkbox" name="unassigned" value="1" class="form-check-input" checked="{$filter->unassignedOnly}"> Nepřiřazené
+        </label>
+        <a n:if="$hasFilters" n:href="default, scope => $filter->scope" class="btn btn-sm btn-link text-secondary">Zrušit filtry</a>
+        <noscript><button class="btn btn-light">Filtrovat</button></noscript>
+    </form>
+
+    {snippet list}
+    {if $orders}
+        <div class="table-responsive">
+            <table class="table table-hover data-table mb-0">
+                <thead>
+                <tr>
+                    <th>Zakázka</th>
+                    <th>Zákazník a zařízení</th>
+                    <th>Stav</th>
+                    <th class="d-none d-lg-table-cell">Technik</th>
+                    <th class="d-none d-md-table-cell">Priorita</th>
+                    <th class="text-end">Termín</th>
+                    <th class="text-end d-none d-xl-table-cell">Cena</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr n:foreach="$orders as $order" class="row-link" data-href="{link detail, $order->id}">
+                    <td>
+                        <a n:href="detail, $order->id" class="fw-semibold text-nowrap">{$order->order_number}</a>
+                        <div class="small text-secondary text-truncate-200" title="{$order->problem_description}">{$order->problem_description}</div>
+                    </td>
+                    <td>
+                        <div class="fw-medium text-truncate-200">{$order->customer->name}</div>
+                        <div class="small text-secondary text-truncate-200">{icon(deviceIcon($order->device->type), 'icon-xs')} {$order->device->manufacturer} {$order->device->model}</div>
+                    </td>
+                    <td>{statusBadge($order->status)}</td>
+                    <td class="d-none d-lg-table-cell">
+                        {var $tech = $order->ref('users', 'assigned_technician_id')}
+                        {if $tech}
+                            <span class="d-inline-flex align-items-center gap-2 small"><span class="avatar avatar-xs">{($tech->first_name . ' ' . $tech->last_name)|initials}</span>{$tech->first_name} {$tech->last_name}</span>
+                        {else}
+                            <span class="small text-warning-emphasis">{icon('user-x', 'icon-xs')} nepřiřazeno</span>
+                        {/if}
+                    </td>
+                    <td class="d-none d-md-table-cell">{priorityBadge($order->priority)}</td>
+                    <td class="text-end text-nowrap">
+                        {if isOverdue($order->due_date, $order->status)}
+                            <span class="text-danger fw-semibold" title="Po termínu">{icon('alarm-clock', 'icon-xs')} {$order->due_date|czDate}</span>
+                        {else}
+                            <span class="small">{$order->due_date|czDate}</span>
+                        {/if}
+                    </td>
+                    <td class="text-end d-none d-xl-table-cell small fw-semibold text-nowrap">
+                        {if $order->final_price !== null}{$order->final_price|money}{elseif $order->estimated_price !== null}<span class="text-secondary fw-normal" title="Odhad">~ {$order->estimated_price|money}</span>{else}—{/if}
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer">{include '../@paginator.latte', paginator: $paginator}</div>
+    {elseif $hasFilters}
+        {include '../@empty.latte', icon: 'search-x', title: 'Žádná zakázka neodpovídá filtru', text: 'Zkuste upravit hledání nebo zrušit filtry.'}
+    {else}
+        {include '../@empty.latte', icon: 'clipboard-list', title: 'Žádné zakázky', text: $actor->isTechnician() ? 'Momentálně nemáte přiřazenou žádnou zakázku.' : 'V tomto přehledu nejsou žádné zakázky.', actionUrl: $user->isAllowed('order', 'create') ? $presenter->link('add') : null, actionLabel: 'Přijmout zakázku'}
+    {/if}
+    {/snippet}
+</section>
+{/block}

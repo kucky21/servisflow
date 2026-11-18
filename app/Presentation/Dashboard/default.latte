@@ -1,0 +1,226 @@
+{varType App\DTO\DashboardData $data}
+{varType array $chartData}
+{varType App\Security\Actor $actor}
+
+{block title}Přehled{/block}
+
+{block content}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Dobrý den, {explode(' ', $actor->name)[0]}</h1>
+        <p class="page-subtitle">
+            {if $actor->isTechnician()}Přehled vašich přiřazených zakázek{else}Přehled provozu servisu{/if}
+            · {(new DateTimeImmutable)|czDate}
+        </p>
+    </div>
+    <div class="page-actions" n:if="!$actor->isTechnician()">
+        <a n:href="Order:default, overdue => 1" class="btn btn-light" n:if="$data->overdueOrders > 0">
+            {icon('alarm-clock')} {$data->overdueOrders} po termínu
+        </a>
+        <a n:href="Order:default, unassigned => 1" class="btn btn-light" n:if="$data->unassignedOrders > 0">
+            {icon('user-x')} {$data->unassignedOrders} nepřiřazených
+        </a>
+    </div>
+</div>
+
+{* KPI karty *}
+<div class="kpi-grid">
+    <a n:href="Order:default" class="kpi-card">
+        <div class="kpi-icon tone-blue">{icon('activity')}</div>
+        <div class="kpi-body">
+            <div class="kpi-label">Aktivní zakázky</div>
+            <div class="kpi-value">{$data->activeOrders}</div>
+            <div class="kpi-meta" n:if="$data->dueToday > 0">{$data->dueToday} s termínem dnes</div>
+            <div class="kpi-meta" n:if="$data->dueToday === 0">rozpracované opravy</div>
+        </div>
+    </a>
+    <a n:href="Order:default, scope => 'done'" class="kpi-card">
+        <div class="kpi-icon tone-green">{icon('circle-check')}</div>
+        <div class="kpi-body">
+            <div class="kpi-label">Dokončeno tento měsíc</div>
+            <div class="kpi-value">{$data->completedThisMonth}</div>
+            <div class="kpi-meta" n:if="$data->averageTurnaroundDays !== null">průměrně {$data->averageTurnaroundDays|number:1, ',', ' '} dne na opravu</div>
+        </div>
+    </a>
+    <a n:href="Order:default, overdue => 1" n:class="kpi-card, $data->overdueOrders > 0 ? kpi-alert">
+        <div class="kpi-icon tone-red">{icon('alarm-clock')}</div>
+        <div class="kpi-body">
+            <div class="kpi-label">Po termínu</div>
+            <div class="kpi-value">{$data->overdueOrders}</div>
+            <div class="kpi-meta">{$data->overdueOrders > 0 ? 'vyžaduje pozornost' : 'vše v termínu'}</div>
+        </div>
+    </a>
+    <a n:href="Order:default, status => 'awaiting_parts'" class="kpi-card">
+        <div class="kpi-icon tone-orange">{icon('package-search')}</div>
+        <div class="kpi-body">
+            <div class="kpi-label">Čeká na díly</div>
+            <div class="kpi-value">{$data->awaitingParts}</div>
+            <div class="kpi-meta">zakázky blokované dodávkou</div>
+        </div>
+    </a>
+    <div class="kpi-card" n:if="!$actor->isTechnician()">
+        <div class="kpi-icon tone-teal">{icon('banknote')}</div>
+        <div class="kpi-body">
+            <div class="kpi-label">Hodnota dokončených</div>
+            <div class="kpi-value kpi-value-sm">{$data->completedValueThisMonth|money}</div>
+            <div class="kpi-meta">tento měsíc vč. DPH</div>
+        </div>
+    </div>
+    <a n:href="Customer:default, sort => 'newest'" class="kpi-card" n:if="!$actor->isTechnician()">
+        <div class="kpi-icon tone-indigo">{icon('user-plus')}</div>
+        <div class="kpi-body">
+            <div class="kpi-label">Noví zákazníci</div>
+            <div class="kpi-value">{$data->newCustomers}</div>
+            <div class="kpi-meta">za posledních 30 dní</div>
+        </div>
+    </a>
+</div>
+
+{* Grafy *}
+<div class="row g-4 mt-1">
+    <div class="col-xl-4 col-lg-5">
+        <section class="card h-100">
+            <div class="card-header"><h2 class="card-title">Zakázky podle stavu</h2></div>
+            <div class="card-body">
+                {if array_sum($chartData['status']['values']) > 0}
+                    <div class="chart-box chart-box-donut"><canvas id="chart-status" aria-label="Graf zakázek podle stavu" role="img"></canvas></div>
+                {else}
+                    {include '../@empty.latte', icon: 'pie-chart', title: 'Zatím žádné zakázky', text: 'Graf se zobrazí po přijetí první zakázky.'}
+                {/if}
+            </div>
+        </section>
+    </div>
+    <div class="col-xl-8 col-lg-7">
+        <section class="card h-100">
+            <div class="card-header">
+                <h2 class="card-title">Přijaté a dokončené zakázky</h2>
+                <span class="card-subtitle">posledních 6 měsíců</span>
+            </div>
+            <div class="card-body"><div class="chart-box"><canvas id="chart-monthly" aria-label="Graf zakázek po měsících" role="img"></canvas></div></div>
+        </section>
+    </div>
+    <div class="col-12" n:if="!$actor->isTechnician()">
+        <section class="card">
+            <div class="card-header">
+                <h2 class="card-title">Hodnota dokončených zakázek</h2>
+                <span class="card-subtitle">posledních 6 měsíců, vč. DPH</span>
+            </div>
+            <div class="card-body"><div class="chart-box chart-box-sm"><canvas id="chart-value" aria-label="Graf hodnoty zakázek" role="img"></canvas></div></div>
+        </section>
+    </div>
+</div>
+
+<div class="row g-4 mt-1">
+    {* Poslední zakázky *}
+    <div class="col-xl-7">
+        <section class="card h-100">
+            <div class="card-header">
+                <h2 class="card-title">Poslední zakázky</h2>
+                <a n:href="Order:default, scope => 'all'" class="card-link">Všechny {icon('arrow-right')}</a>
+            </div>
+            {if $data->recentOrders}
+                <div class="table-responsive">
+                    <table class="table table-hover data-table mb-0">
+                        <thead><tr><th>Zakázka</th><th>Zákazník / zařízení</th><th>Stav</th><th class="text-end">Termín</th></tr></thead>
+                        <tbody>
+                        <tr n:foreach="$data->recentOrders as $order" class="row-link" data-href="{link Order:detail, $order->id}">
+                            <td>
+                                <a n:href="Order:detail, $order->id" class="fw-semibold text-nowrap">{$order->order_number}</a>
+                                <div class="small text-secondary">{$order->received_at|relative}</div>
+                            </td>
+                            <td>
+                                <div class="text-truncate-200">{$order->customer->name}</div>
+                                <div class="small text-secondary text-truncate-200">{$order->device->manufacturer} {$order->device->model}</div>
+                            </td>
+                            <td>{statusBadge($order->status)}</td>
+                            <td class="text-end">
+                                <span n:class="isOverdue($order->due_date, $order->status) ? 'text-danger fw-semibold'">{$order->due_date|czDate}</span>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            {else}
+                <div class="card-body">
+                    {include '../@empty.latte', icon: 'clipboard-list', title: 'Žádné zakázky', text: 'Zatím nebyla přijata žádná zakázka.'}
+                </div>
+            {/if}
+        </section>
+    </div>
+
+    {* Aktivita *}
+    <div class="col-xl-5">
+        <section class="card h-100">
+            <div class="card-header"><h2 class="card-title">Aktuální aktivity</h2></div>
+            <div class="card-body">
+                {if $data->recentActivity}
+                    <ul class="activity-feed">
+                        <li n:foreach="$data->recentActivity as $activity">
+                            {if $activity->kind === 'status'}
+                                <span class="activity-icon tone-blue">{icon('git-commit-horizontal')}</span>
+                                <div>
+                                    <div><strong>{$activity->user_name ?? 'Systém'}</strong> změnil stav
+                                        <a n:href="Order:detail, $activity->order_id">{$activity->order_number}</a>
+                                        na {statusBadge($activity->detail)}</div>
+                                    <div class="activity-time">{$activity->created_at|relative}</div>
+                                </div>
+                            {elseif $activity->kind === 'comment'}
+                                <span class="activity-icon tone-amber">{icon('message-square')}</span>
+                                <div>
+                                    <div><strong>{$activity->user_name ?? 'Systém'}</strong> komentoval
+                                        <a n:href="Order:detail, $activity->order_id">{$activity->order_number}</a></div>
+                                    <div class="activity-quote">{$activity->detail|truncate:110}</div>
+                                    <div class="activity-time">{$activity->created_at|relative}</div>
+                                </div>
+                            {else}
+                                <span class="activity-icon tone-green">{icon('timer')}</span>
+                                <div>
+                                    <div><strong>{$activity->user_name ?? 'Systém'}</strong> vykázal {(int) $activity->detail_from|hours} na
+                                        <a n:href="Order:detail, $activity->order_id">{$activity->order_number}</a></div>
+                                    <div class="activity-quote">{$activity->detail|truncate:110}</div>
+                                    <div class="activity-time">{$activity->created_at|relative}</div>
+                                </div>
+                            {/if}
+                        </li>
+                    </ul>
+                {else}
+                    {include '../@empty.latte', icon: 'activity', title: 'Žádná aktivita', text: 'Změny na zakázkách se zobrazí zde.'}
+                {/if}
+            </div>
+        </section>
+    </div>
+
+    {* Nízký stav skladu *}
+    <div class="col-12" n:if="$data->lowStockItems">
+        <section class="card">
+            <div class="card-header">
+                <h2 class="card-title">{icon('triangle-alert', 'text-warning')} Nízká skladová zásoba</h2>
+                <a n:href="Inventory:default, low => 1" class="card-link">Všechny ({$data->lowStockCount}) {icon('arrow-right')}</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table data-table mb-0">
+                    <thead><tr><th>SKU</th><th>Položka</th><th class="text-end">Skladem</th><th class="text-end">Minimum</th><th></th></tr></thead>
+                    <tbody>
+                    <tr n:foreach="$data->lowStockItems as $item">
+                        <td class="font-monospace small">{$item->sku}</td>
+                        <td><a n:href="Inventory:detail, $item->id">{$item->name}</a></td>
+                        <td class="text-end"><span n:class="stock-pill, $item->quantity === 0 ? 'stock-out' : 'stock-low'">{$item->quantity} {$item->unit}</span></td>
+                        <td class="text-end text-secondary">{$item->min_quantity} {$item->unit}</td>
+                        <td class="text-end">
+                            <a n:if="$user->isAllowed('inventory', 'receive')" n:href="Inventory:detail, $item->id" class="btn btn-sm btn-light">{icon('package-plus')} Naskladnit</a>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</div>
+
+<script n:nonce type="application/json" id="dashboard-charts">{$chartData}</script>
+{/block}
+
+{block scripts}
+<script n:nonce src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script n:nonce src="{$basePath}/assets/js/dashboard.js?v=1.0.0"></script>
+{/block}

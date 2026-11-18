@@ -1,0 +1,50 @@
+{varType Nette\Database\Table\ActiveRow|null $customer}
+{import '../@form.latte'}
+
+{block title}{$customer ? 'Upravit zákazníka' : 'Nový zákazník'}{/block}
+
+{block content}
+<div class="page-header">
+    <div>
+        <nav class="breadcrumbs"><a n:href="default">Zákazníci</a> {if $customer}<span>/</span> <a n:href="detail, $customer->id">{$customer->name}</a>{/if}</nav>
+        <h1 class="page-title">{$customer ? 'Upravit zákazníka' : 'Nový zákazník'}</h1>
+    </div>
+</div>
+
+<form n:name="customerForm" class="form-layout">
+    {include formErrors $form}
+    <section class="card">
+        <div class="card-header"><h2 class="card-title">{icon('id-card')} Základní údaje</h2></div>
+        <div class="card-body row g-3">
+            {include field $form['type'], class: 'col-12'}
+            {include field $form['name'], class: 'col-md-7'}
+            {include field $form['contact_person'], class: 'col-md-5'}
+            {include field $form['email'], class: 'col-md-6'}
+            {include field $form['phone'], class: 'col-md-6'}
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="card-header"><h2 class="card-title">{icon('map-pin')} Adresa a fakturační údaje</h2></div>
+        <div class="card-body row g-3">
+            {include field $form['street'], class: 'col-md-6'}
+            {include field $form['city'], class: 'col-md-4'}
+            {include field $form['zip'], class: 'col-md-2'}
+            {include field $form['ico'], class: 'col-md-4', hint: 'Kontroluje se kontrolní číslice.'}
+            {include field $form['dic'], class: 'col-md-4'}
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="card-header"><h2 class="card-title">{icon('sticky-note')} Poznámky</h2></div>
+        <div class="card-body row g-3">
+            {include field $form['note']}
+        </div>
+    </section>
+
+    <div class="form-actions">
+        <a href="{$customer ? $presenter->link('detail', $customer->id) : $presenter->link('default')}" class="btn btn-light">Zrušit</a>
+        <button n:name="send" class="btn btn-primary">{icon('check')} {$form['send']->getCaption()}</button>
+    </div>
+</form>
+{/block}

@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<ruleset name="ServisHub">
+    <description>PSR-12 coding standard pro ServisHub</description>
+
+    <file>app</file>
+    <file>tests</file>
+    <file>bin/install-assets.php</file>
+    <exclude-pattern>*.latte</exclude-pattern>
+
+    <arg name="extensions" value="php"/>
+    <arg name="colors"/>
+    <arg name="cache" value="temp/.phpcs-cache"/>
+    <arg value="sp"/>
+
+    <rule ref="PSR12">
+        <!-- Dlouhé SQL a hlášky v češtině – limit délky řádku pouze jako varování -->
+        <exclude name="Generic.Files.LineLength.TooLong"/>
+    </rule>
+    <rule ref="Generic.Files.LineLength">
+        <properties>
+            <property name="lineLimit" value="160"/>
+            <property name="absoluteLineLimit" value="0"/>
+        </properties>
+    </rule>
+    <rule ref="Generic.PHP.ForbiddenFunctions">
+        <properties>
+            <property name="forbiddenFunctions" type="array">
+                <element key="var_dump" value="null"/>
+                <element key="dump" value="null"/>
+                <element key="die" value="null"/>
+            </property>
+        </properties>
+    </rule>
+</ruleset>

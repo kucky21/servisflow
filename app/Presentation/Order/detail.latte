@@ -1,0 +1,401 @@
+{varType Nette\Database\Table\ActiveRow $order}
+{varType App\Model\Enum\OrderStatus $status}
+{varType Nette\Database\Table\ActiveRow $customer}
+{varType Nette\Database\Table\ActiveRow $device}
+{varType Nette\Database\Table\ActiveRow|null $technician}
+{varType Nette\Database\Table\ActiveRow|null $createdBy}
+{varType array $transitions}
+{varType Nette\Database\Table\ActiveRow[] $workLogs}
+{varType Nette\Database\Table\ActiveRow[] $materials}
+{varType Nette\Database\Table\ActiveRow[] $comments}
+{varType App\DTO\Pricing\PriceBreakdown $breakdown}
+{varType bool $canWork}
+{varType bool $canManage}
+{varType App\Model\Enum\DocumentType[] $documents}
+{varType bool $isOverdue}
+{varType App\Security\Actor $actor}
+{import '../@form.latte'}
+
+{block title}{$order->order_number}{/block}
+
+{block content}
+{snippet header}
+<div class="order-hero">
+    <div class="order-hero-main">
+        <nav class="breadcrumbs"><a n:href="default">Zakázky</a> <span>/</span> {$order->order_number}</nav>
+        <div class="d-flex align-items-center flex-wrap gap-2">
+            <h1 class="page-title mb-0">{$order->order_number}</h1>
+            {statusBadge($status)}
+            {priorityBadge($order->priority)}
+            <span n:if="$isOverdue" class="badge-status tone-red">{icon('alarm-clock')} Po termínu</span>
+        </div>
+        <p class="page-subtitle mt-1">
+            {$customer->name} · {$device->manufacturer} {$device->model}
+            · přijato {$order->received_at|czDateTime}
+        </p>
+    </div>
+    <div class="page-actions">
+        <div class="dropdown" n:if="$documents">
+            <button class="btn btn-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">{icon('file-text')} Dokumenty</button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li n:foreach="$documents as $doc">
+                    <a class="dropdown-item" n:href="'Document:' . $doc->value, $order->id" target="_blank">{icon('file-down')} {$doc->label()} (PDF)</a>
+                </li>
+            </ul>
+        </div>
+        <a n:if="$canManage" n:href="edit, $order->id" class="btn btn-light">{icon('pencil')} Upravit</a>
+    </div>
+</div>
+
+{* Průběh workflow *}
+{var $steps = [
+    App\Model\Enum\OrderStatus::Received,
+    App\Model\Enum\OrderStatus::Diagnostics,
+    App\Model\Enum\OrderStatus::AwaitingApproval,
+    App\Model\Enum\OrderStatus::InRepair,
+    App\Model\Enum\OrderStatus::Completed,
+    App\Model\Enum\OrderStatus::HandedOver,
+]}
+{var $currentStep = $status === App\Model\Enum\OrderStatus::AwaitingParts ? App\Model\Enum\OrderStatus::InRepair : $status}
+{var $currentIndex = array_search($currentStep, $steps, true)}
+<section class="card workflow-card">
+    {if $status === App\Model\Enum\OrderStatus::Cancelled}
+        <div class="alert alert-danger m-3 mb-0 d-flex gap-2">{icon('circle-x')}
+            <div><strong>Zakázka byla zrušena {$order->cancelled_at|czDateTime}.</strong><br>Důvod: {$order->cancellation_reason}</div>
+        </div>
+    {else}
+        <ol class="stepper">
+            <li n:foreach="$steps as $i => $step" n:class="stepper-item, $currentIndex !== false && $i < $currentIndex ? done, $i === $currentIndex ? current">
+                <span class="stepper-dot">{if $currentIndex !== false && $i < $currentIndex}{icon('check')}{else}{$i + 1}{/if}</span>
+                <span class="stepper-label">
+                    {$step->label()}
+                    <small n:if="$i === $currentIndex && $status === App\Model\Enum\OrderStatus::AwaitingParts" class="d-block text-warning-emphasis">čeká na díly</small>
+                </span>
+            </li>
+        </ol>
+    {/if}
+
+    {if $transitions}
+        <div class="workflow-actions">
+            <span class="small text-secondary me-1">Další krok:</span>
+            {foreach $transitions as $item}
+                {var $t = $item['transition']}
+                {var $blocked = (bool) $item['problems']}
+                <span n:tag-if="$blocked" data-bs-toggle="tooltip" data-bs-html="false" title="{implode(' ', $item['problems'])}" tabindex="0">
+                    <button type="button" class="btn btn-sm btn-{$t->style}"
+                            data-bs-toggle="modal" data-bs-target="#status-modal"
+                            data-status="{$t->to->value}" data-status-label="{$t->label}"
+                            data-requires-note="{$t->requiresNote ? 1 : 0}"
+                            data-note-prompt="{$t->notePrompt}"
+                            disabled="{$blocked}">
+                        {icon($t->to->icon())} {$t->label}
+                    </button>
+                </span>
+            {/foreach}
+        </div>
+        {var $blockers = array_unique(array_merge([], ...array_map(fn($i) => $i['problems'], $transitions)))}
+        <div n:if="$blockers" class="workflow-hint">
+            {icon('info')} <span><strong>Podmínky dalšího kroku:</strong> {implode(' ', $blockers)}</span>
+        </div>
+    {elseif $status->isFinal()}
+        <div class="workflow-actions"><span class="small text-secondary">{icon('lock')} Zakázka je uzavřená – další změny stavu nejsou možné.</span></div>
+    {/if}
+</section>
+{/snippet}
+
+<div class="row g-4 mt-0">
+    <div class="col-xl-8">
+        <ul class="nav nav-tabs-modern" role="tablist">
+            <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-overview" type="button" role="tab">{icon('clipboard-list')} Přehled</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-work" type="button" role="tab">{icon('timer')} Práce <span class="count-pill" n:snippet="workCount">{count($workLogs)}</span></button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-material" type="button" role="tab">{icon('package')} Materiál <span class="count-pill" n:snippet="materialCount">{count($materials)}</span></button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-pricing" type="button" role="tab">{icon('calculator')} Cena</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-history" type="button" role="tab">{icon('history')} Historie</button></li>
+        </ul>
+
+        <div class="tab-content">
+            {* --- Přehled --- *}
+            <div class="tab-pane fade show active" id="tab-overview" role="tabpanel">
+                <section class="card">
+                    <div class="card-body">
+                        <h3 class="section-label">Popis závady</h3>
+                        <p class="mb-3">{$order->problem_description|breakLines}</p>
+                        <div n:if="$order->accessories" class="note-box mb-3">{icon('briefcase')} <div><strong>Příslušenství a stav:</strong> {$order->accessories}</div></div>
+                        <div n:if="$order->internal_note && $actor->isManagerial()" class="note-box note-box-warning">{icon('lock')} <div><strong>Interní poznámka:</strong> {$order->internal_note|breakLines}</div></div>
+                    </div>
+                </section>
+
+                <section class="card mt-3">
+                    <div class="card-header"><h2 class="card-title">{icon('stethoscope')} Diagnostika</h2></div>
+                    <div class="card-body">
+                        {snippet diagnosis}
+                            {if $canWork}
+                                <form n:name="diagnosisForm" class="ajax row g-3">
+                                    {include formErrors $form}
+                                    {include field $form['diagnosis']}
+                                    {include field $form['estimated_price'], class: 'col-md-5', hint: 'Cena sdělená zákazníkovi ke schválení.'}
+                                    <div class="col-md-7 d-flex align-items-end justify-content-end">
+                                        <button n:name="send" class="btn btn-primary">{icon('save')} Uložit diagnostiku</button>
+                                    </div>
+                                </form>
+                            {else}
+                                <p class="mb-2">{$order->diagnosis ?? 'Diagnostika zatím nebyla zapsána.'|breakLines}</p>
+                                <div class="small text-secondary" n:if="$order->estimated_price !== null">Odhad ceny: <strong>{$order->estimated_price|money}</strong></div>
+                            {/if}
+                        {/snippet}
+                    </div>
+                </section>
+            </div>
+
+            {* --- Práce --- *}
+            <div class="tab-pane fade" id="tab-work" role="tabpanel">
+                <section class="card">
+                    {snippet work}
+                        {if $workLogs}
+                            <div class="table-responsive">
+                                <table class="table data-table mb-0">
+                                    <thead><tr><th>Datum</th><th>Úkon</th><th>Technik</th><th class="text-end">Čas</th><th class="text-end">Částka</th><th></th></tr></thead>
+                                    <tbody>
+                                    <tr n:foreach="$workLogs as $log">
+                                        <td class="small text-nowrap">{$log->work_date|czDate}</td>
+                                        <td>{$log->description}</td>
+                                        <td class="small">{$log->user ? $log->user->first_name . ' ' . $log->user->last_name : '—'}</td>
+                                        <td class="text-end text-nowrap">{$log->minutes|hours}</td>
+                                        <td class="text-end text-nowrap small">{$breakdown->laborLines[$iterator->counter0]->getTotal()|money}</td>
+                                        <td class="text-end">
+                                            <button n:if="$canWork && ($actor->isManagerial() || $log->user_id === $actor->id)" type="button" class="btn-icon btn-icon-sm text-danger"
+                                                    data-confirm="Odstranit výkaz práce?" data-confirm-text="{$log->description}"
+                                                    data-action="{link deleteWorkLog!, workLogId => $log->id}" data-method="post" data-ajax
+                                                    title="Odstranit">{icon('trash-2')}</button>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                    <tfoot><tr><th colspan="3">Celkem</th><th class="text-end">{$breakdown->getTotalMinutes()|hours}</th><th class="text-end">{$breakdown->laborTotal|money}</th><th></th></tr></tfoot>
+                                </table>
+                            </div>
+                        {else}
+                            {include '../@empty.latte', icon: 'timer', title: 'Zatím bez vykázané práce', text: $canWork ? 'Vykažte provedené úkony pomocí formuláře níže.' : null}
+                        {/if}
+
+                        {if $canWork}
+                            <form n:name="workLogForm" class="ajax inline-form">
+                                {include formErrors $form}
+                                <div class="row g-2 align-items-end">
+                                    {include field $form['description'], class: 'col-md-6'}
+                                    {include field $form['hours'], class: 'col-md-2 col-6'}
+                                    {include field $form['work_date'], class: 'col-md-2 col-6'}
+                                    <div class="col-md-2"><button n:name="send" class="btn btn-primary w-100">{icon('plus')} Vykázat</button></div>
+                                </div>
+                                <div class="form-text">Sazba {$order->hourly_rate|money}/h bez DPH se uloží k výkazu.</div>
+                            </form>
+                        {/if}
+                    {/snippet}
+                </section>
+            </div>
+
+            {* --- Materiál --- *}
+            <div class="tab-pane fade" id="tab-material" role="tabpanel">
+                <section class="card">
+                    {snippet material}
+                        {if $materials}
+                            <div class="table-responsive">
+                                <table class="table data-table mb-0">
+                                    <thead><tr><th>Položka</th><th class="text-end">Množství</th><th class="text-end">Cena / j.</th><th class="text-end">Celkem</th><th></th></tr></thead>
+                                    <tbody>
+                                    <tr n:foreach="$materials as $material">
+                                        <td>
+                                            <a n:href="Inventory:detail, $material->inventory_item_id">{$material->name}</a>
+                                            <div class="small text-secondary font-monospace">{$material->sku}</div>
+                                        </td>
+                                        <td class="text-end text-nowrap">{$material->quantity} {$material->unit}</td>
+                                        <td class="text-end text-nowrap small">{$material->unit_price|money}</td>
+                                        <td class="text-end text-nowrap">{$breakdown->materialLines[$iterator->counter0]->getTotal()|money}</td>
+                                        <td class="text-end">
+                                            <button n:if="$canWork" type="button" class="btn-icon btn-icon-sm text-danger"
+                                                    data-confirm="Vrátit materiál na sklad?" data-confirm-text="{$material->quantity}× {$material->name} bude vráceno na sklad."
+                                                    data-action="{link removeMaterial!, materialId => $material->id}" data-method="post" data-ajax
+                                                    title="Vrátit na sklad">{icon('undo-2')}</button>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                    <tfoot><tr><th colspan="3">Celkem materiál</th><th class="text-end">{$breakdown->materialTotal|money}</th><th></th></tr></tfoot>
+                                </table>
+                            </div>
+                            <div class="small text-secondary px-3 py-2">Ceny jsou uloženy v okamžiku výdeje – pozdější změna ceníku je neovlivní.</div>
+                        {else}
+                            {include '../@empty.latte', icon: 'package', title: 'Bez materiálu', text: $canWork ? 'Vydejte díly ze skladu formulářem níže – stav skladu se upraví automaticky.' : null}
+                        {/if}
+
+                        {if $canWork}
+                            <form n:name="materialForm" class="ajax inline-form">
+                                {include formErrors $form}
+                                <div class="row g-2 align-items-end">
+                                    {include field $form['item_id'], class: 'col-md-7'}
+                                    {include field $form['quantity'], class: 'col-md-2 col-6'}
+                                    <div class="col-md-3 col-6"><button n:name="send" class="btn btn-primary w-100">{icon('package-minus')} Vydat</button></div>
+                                </div>
+                            </form>
+                        {/if}
+                    {/snippet}
+                </section>
+            </div>
+
+            {* --- Cena --- *}
+            <div class="tab-pane fade" id="tab-pricing" role="tabpanel">
+                <section class="card">
+                    <div class="card-body">
+                        {snippet pricing}
+                            <div class="price-summary">
+                                <div class="price-row"><span>Práce ({$breakdown->getTotalMinutes()|hours})</span><span>{$breakdown->laborTotal|money}</span></div>
+                                <div class="price-row"><span>Materiál ({count($breakdown->materialLines)} položek)</span><span>{$breakdown->materialTotal|money}</span></div>
+                                <div class="price-row price-row-sub"><span>Mezisoučet</span><span>{$breakdown->subtotal|money}</span></div>
+                                <div class="price-row text-success" n:if="$breakdown->hasDiscount()"><span>Sleva {$breakdown->discountPercent->stripTrailingZeros()} %</span><span>−{$breakdown->discountAmount|money}</span></div>
+                                <div class="price-row price-row-sub"><span>Základ daně</span><span>{$breakdown->taxBase|money}</span></div>
+                                <div class="price-row"><span>DPH {$breakdown->vatRate->stripTrailingZeros()} %</span><span>{$breakdown->vatAmount|money}</span></div>
+                                <div class="price-row price-row-total"><span>Celkem vč. DPH</span><span>{$breakdown->total|money}</span></div>
+                            </div>
+                            <div class="row g-3 mt-2 small">
+                                <div class="col-md-4"><div class="mini-stat"><span>Odhad pro zákazníka</span><strong>{$order->estimated_price|money}</strong></div></div>
+                                <div class="col-md-4"><div class="mini-stat"><span>Finální cena</span><strong>{$order->final_price|money}</strong></div></div>
+                                <div class="col-md-4"><div class="mini-stat"><span>Hodinová sazba</span><strong>{$order->hourly_rate|money}</strong></div></div>
+                            </div>
+                            {if $order->estimated_price !== null && $status->isActive() && $breakdown->total->isGreaterThan(App\Model\Money\Money::of($order->estimated_price))}
+                                <div class="alert alert-warning mt-3 mb-0 small d-flex gap-2">{icon('triangle-alert')}
+                                    <span>Aktuální cena převyšuje odhad sdělený zákazníkovi. Zvažte kontakt se zákazníkem.</span>
+                                </div>
+                            {/if}
+                            <p class="small text-secondary mt-3 mb-0" n:if="$order->final_price !== null">Finální cena byla zafixována při dokončení zakázky.</p>
+                        {/snippet}
+                    </div>
+                </section>
+            </div>
+
+            {* --- Historie --- *}
+            <div class="tab-pane fade" id="tab-history" role="tabpanel">
+                <section class="card">
+                    <div class="card-body">
+                        {snippet history}{control orderTimeline}{/snippet}
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    {* --- Postranní panel --- *}
+    <div class="col-xl-4">
+        {snippet sidebar}
+        <section class="card">
+            <div class="card-header"><h2 class="card-title">{icon('user')} Zákazník</h2></div>
+            <div class="card-body">
+                {if $user->isAllowed('customer', 'view')}
+                    <a n:href="Customer:detail, $customer->id" class="fw-semibold">{$customer->name}</a>
+                {else}
+                    <span class="fw-semibold">{$customer->name}</span>
+                {/if}
+                <div class="small mt-1" n:if="$customer->phone">{icon('phone', 'icon-xs')} <a href="tel:{$customer->phone|replace:' ', ''}">{$customer->phone}</a></div>
+                <div class="small" n:if="$customer->email">{icon('mail', 'icon-xs')} <a href="mailto:{$customer->email}">{$customer->email}</a></div>
+            </div>
+        </section>
+
+        <section class="card mt-3">
+            <div class="card-header"><h2 class="card-title">{icon(deviceIcon($device->type))} Zařízení</h2></div>
+            <div class="card-body">
+                {if $user->isAllowed('device', 'view')}
+                    <a n:href="Device:detail, $device->id" class="fw-semibold">{$device->manufacturer} {$device->model}</a>
+                {else}
+                    <span class="fw-semibold">{$device->manufacturer} {$device->model}</span>
+                {/if}
+                <div class="small text-secondary">{deviceTypeLabel($device->type)}</div>
+                <div class="small font-monospace mt-1" n:if="$device->serial_number">SN {$device->serial_number}</div>
+            </div>
+        </section>
+
+        <section class="card mt-3">
+            <div class="card-header"><h2 class="card-title">{icon('calendar')} Termíny a odpovědnost</h2></div>
+            <div class="card-body">
+                <dl class="info-list info-list-compact">
+                    <dt>Přijato</dt><dd>{$order->received_at|czDateTime}</dd>
+                    <dt>Termín</dt><dd n:class="$isOverdue ? 'text-danger fw-semibold'">{$order->due_date|czDate}</dd>
+                    <dt n:if="$order->completed_at">Dokončeno</dt><dd n:if="$order->completed_at">{$order->completed_at|czDateTime}</dd>
+                    <dt n:if="$order->handed_over_at">Předáno</dt><dd n:if="$order->handed_over_at">{$order->handed_over_at|czDateTime}</dd>
+                    <dt>Přijal</dt><dd>{$createdBy ? $createdBy->first_name . ' ' . $createdBy->last_name : '—'}</dd>
+                    <dt>Technik</dt>
+                    <dd>
+                        {if $technician}
+                            <span class="d-inline-flex align-items-center gap-2"><span class="avatar avatar-xs">{($technician->first_name . ' ' . $technician->last_name)|initials}</span>{$technician->first_name} {$technician->last_name}</span>
+                        {else}
+                            <span class="text-warning-emphasis">nepřiřazeno</span>
+                        {/if}
+                    </dd>
+                </dl>
+                <form n:if="$canManage" n:name="assignForm" class="ajax mt-3">
+                    {include formErrors $form}
+                    <div class="input-group input-group-sm">
+                        <select n:name="technician_id" class="form-select"></select>
+                        <button n:name="send" class="btn btn-light">{icon('user-check')} Přiřadit</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+        {/snippet}
+
+        <section class="card mt-3">
+            <div class="card-header"><h2 class="card-title">{icon('messages-square')} Interní komentáře</h2></div>
+            <div class="card-body">
+                {snippet comments}
+                    <form n:name="commentForm" class="ajax mb-3">
+                        {include formErrors $form}
+                        <textarea n:name="body" n:class="form-control, $form['body']->hasErrors() ? is-invalid" rows="2"></textarea>
+                        <div class="invalid-feedback" n:ifcontent>{$form['body']->getError()}</div>
+                        <div class="d-flex justify-content-end mt-2"><button n:name="send" class="btn btn-sm btn-primary">{icon('send')} Přidat</button></div>
+                    </form>
+                    {if $comments}
+                        <ul class="comment-list">
+                            <li n:foreach="$comments as $comment">
+                                {var $author = $comment->user ? $comment->user->first_name . ' ' . $comment->user->last_name : 'Smazaný uživatel'}
+                                <span class="avatar avatar-sm">{$author|initials}</span>
+                                <div class="comment-body">
+                                    <div class="comment-meta"><strong>{$author}</strong> <span title="{$comment->created_at|czDateTime}">{$comment->created_at|relative}</span></div>
+                                    <div class="comment-text">{$comment->body|breakLines}</div>
+                                </div>
+                            </li>
+                        </ul>
+                    {else}
+                        <p class="small text-secondary mb-0 text-center">Zatím žádné komentáře.</p>
+                    {/if}
+                {/snippet}
+            </div>
+        </section>
+    </div>
+</div>
+
+{* Modal: změna stavu *}
+<div class="modal fade" id="status-modal" tabindex="-1" aria-labelledby="status-modal-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            {snippet statusForm}
+            <form n:name="statusForm" class="ajax" data-modal-form>
+                <div class="modal-header">
+                    <h2 class="modal-title h5" id="status-modal-title">Změna stavu zakázky</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zavřít"></button>
+                </div>
+                <div class="modal-body">
+                    {include formErrors $form}
+                    <div class="status-change-preview mb-3">
+                        {statusBadge($status)} {icon('arrow-right', 'text-secondary')} <span data-status-target class="fw-semibold"></span>
+                    </div>
+                    <select n:name="status" class="d-none"></select>
+                    <label n:name="note" class="form-label" data-note-label>Poznámka</label>
+                    <textarea n:name="note" class="form-control" rows="3"></textarea>
+                    <div class="form-text" data-note-help>Poznámka se uloží do historie zakázky.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Zrušit</button>
+                    <button n:name="send" class="btn btn-primary">{icon('check')} Potvrdit změnu</button>
+                </div>
+            </form>
+            {/snippet}
+        </div>
+    </div>
+</div>
+{/block}

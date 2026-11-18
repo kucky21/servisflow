@@ -1,0 +1,36 @@
+{layout '@layout.latte'}
+
+{block content}
+<h2>Nahlášená závada</h2>
+<div class="text-block">{$order->problem_description|breakLines}</div>
+
+<h2>Diagnostika a provedená oprava</h2>
+<div class="text-block">{$order->diagnosis ?? '—'|breakLines}</div>
+
+{include '@pricing-table.latte', breakdown: $breakdown, workLogs: $workLogs, materials: $materials}
+
+<h2>Průběh zakázky</h2>
+<table class="grid">
+    <tr>
+        <td width="33%">Přijato: <span class="strong">{$order->received_at|czDateTime}</span></td>
+        <td width="33%">Dokončeno: <span class="strong">{$order->completed_at|czDateTime}</span></td>
+        <td width="34%">Předáno: <span class="strong">{$order->handed_over_at|czDateTime}</span></td>
+    </tr>
+    <tr>
+        <td colspan="3">Opravu provedl: <span class="strong">{if $technician}{$technician->first_name} {$technician->last_name}{else}—{/if}</span></td>
+    </tr>
+</table>
+
+<p class="small muted">
+    Na provedenou opravu a použitý materiál poskytujeme záruku 6 měsíců od převzetí zařízení.
+    Záruka se nevztahuje na vady způsobené nesprávným používáním nebo mechanickým poškozením.
+</p>
+
+<table class="signature">
+    <tr>
+        <td width="45%"><div class="sign-line">Zařízení převzal (zákazník)</div></td>
+        <td width="10%"></td>
+        <td width="45%"><div class="sign-line">Za servis předal</div></td>
+    </tr>
+</table>
+{/block}

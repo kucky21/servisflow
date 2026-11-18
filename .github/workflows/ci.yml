@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Coding standard & PHPStan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql, intl, gd, bcmath, mbstring
+          coverage: none
+          tools: composer:v2
+
+      - uses: ramsey/composer-install@v3
+
+      - name: PHP_CodeSniffer (PSR-12)
+        run: composer cs
+
+      - name: PHPStan (level 8)
+        run: composer phpstan
+
+  tests:
+    name: PHPUnit (PostgreSQL)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: servishub_test
+          POSTGRES_USER: servishub
+          POSTGRES_PASSWORD: servishub_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U servishub"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      APP_ENV: test
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_NAME: servishub
+      DB_TEST_NAME: servishub_test
+      DB_USER: servishub
+      DB_PASSWORD: servishub_ci
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql, intl, gd, bcmath, mbstring
+          coverage: none
+          tools: composer:v2
+
+      - uses: ramsey/composer-install@v3
+
+      - name: PHPUnit (unit + integrační testy)
+        run: composer test

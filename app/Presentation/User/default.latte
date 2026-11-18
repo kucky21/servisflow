@@ -1,0 +1,63 @@
+{varType Nette\Database\Table\ActiveRow[] $users}
+{varType array $activeOrderCounts}
+{varType App\Security\Actor $actor}
+
+{block title}Uživatelé{/block}
+
+{block content}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Uživatelé</h1>
+        <p class="page-subtitle">Přístupy do systému a role zaměstnanců</p>
+    </div>
+    <div class="page-actions">
+        <a n:href="add" class="btn btn-primary">{icon('user-plus')} Nový uživatel</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="role-card"><span class="role-card-icon tone-red">{icon('shield')}</span><div><strong>Administrátor</strong><p>Uživatelé, nastavení systému, audit. Má i všechna oprávnění vedoucího.</p></div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="role-card"><span class="role-card-icon tone-blue">{icon('briefcase')}</span><div><strong>Vedoucí servisu</strong><p>Zákazníci, zakázky, ceny, sklad, schvalování a předání zákazníkovi.</p></div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="role-card"><span class="role-card-icon tone-green">{icon('wrench')}</span><div><strong>Technik</strong><p>Přiřazené zakázky, diagnostika, výkazy práce, materiál a povolené stavy.</p></div></div>
+    </div>
+</div>
+
+<section class="card">
+    <div class="table-responsive">
+        <table class="table table-hover data-table mb-0">
+            <thead><tr><th>Uživatel</th><th>Role</th><th class="text-center">Aktivní zakázky</th><th>Poslední přihlášení</th><th>Stav</th><th></th></tr></thead>
+            <tbody>
+            <tr n:foreach="$users as $row" n:class="!$row->is_active ? row-muted">
+                <td>
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="avatar avatar-sm">{($row->first_name . ' ' . $row->last_name)|initials}</span>
+                        <div>
+                            <div class="fw-semibold">{$row->first_name} {$row->last_name} <span n:if="$row->id === $actor->id" class="badge-status tone-indigo">vy</span></div>
+                            <div class="small text-secondary">{$row->email}</div>
+                        </div>
+                    </div>
+                </td>
+                <td>{roleLabel($row->role)}</td>
+                <td class="text-center"><span class="count-pill">{$activeOrderCounts[$row->id] ?? 0}</span></td>
+                <td class="small">{$row->last_login_at|relative}</td>
+                <td>
+                    {if !$row->is_active}
+                        <span class="badge-status tone-slate">Deaktivován</span>
+                    {elseif $row->locked_until && $row->locked_until > new DateTimeImmutable}
+                        <span class="badge-status tone-red">{icon('lock')} Zablokován</span>
+                    {else}
+                        <span class="badge-status tone-green">Aktivní</span>
+                    {/if}
+                </td>
+                <td class="text-end"><a n:href="edit, $row->id" class="btn btn-sm btn-light">{icon('pencil')} Upravit</a></td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+{/block}

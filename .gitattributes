@@ -1,0 +1,21 @@
+# Jednotné konce řádků (LF) – shell skripty v Dockeru by s CRLF nefungovaly
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.ttf binary
+*.woff2 binary
+
+# GitHub: Latte šablony zvýraznit jako HTML
+*.latte linguist-language=Latte
+
+# Soubory, které nepatří do distribučního archivu (git archive / composer dist)
+/.github export-ignore
+/tests export-ignore
+/.editorconfig export-ignore
+/.gitattributes export-ignore
+/.gitignore export-ignore
+/phpunit.xml export-ignore
+/phpstan.neon export-ignore
+/phpcs.xml export-ignore

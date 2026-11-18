@@ -1,0 +1,79 @@
+{varType App\DTO\Pricing\PriceBreakdown $breakdown}
+{varType Nette\Database\Table\ActiveRow[] $workLogs}
+{varType Nette\Database\Table\ActiveRow[] $materials}
+
+<h2>Provedená práce</h2>
+{if $workLogs}
+<table class="grid">
+    <thead>
+        <tr>
+            <th width="14%">Datum</th>
+            <th>Popis úkonu</th>
+            <th width="12%" class="num">Čas</th>
+            <th width="16%" class="num">Sazba / h</th>
+            <th width="16%" class="num">Celkem</th>
+        </tr>
+    </thead>
+    <tbody>
+        {foreach $workLogs as $i => $log}
+        <tr>
+            <td>{$log->work_date|czDate}</td>
+            <td>{$log->description}</td>
+            <td class="num">{$log->minutes|hours}</td>
+            <td class="num">{$log->hourly_rate|money}</td>
+            <td class="num">{$breakdown->laborLines[$iterator->counter0]->getTotal()|money}</td>
+        </tr>
+        {/foreach}
+    </tbody>
+</table>
+{else}
+<div class="text-block muted">Žádná vykázaná práce.</div>
+{/if}
+
+<h2>Použitý materiál</h2>
+{if $materials}
+<table class="grid">
+    <thead>
+        <tr>
+            <th width="16%">Kód</th>
+            <th>Položka</th>
+            <th width="12%" class="num">Množství</th>
+            <th width="16%" class="num">Cena / j.</th>
+            <th width="16%" class="num">Celkem</th>
+        </tr>
+    </thead>
+    <tbody>
+        {foreach $materials as $material}
+        <tr>
+            <td>{$material->sku}</td>
+            <td>{$material->name}</td>
+            <td class="num">{$material->quantity} {$material->unit}</td>
+            <td class="num">{$material->unit_price|money}</td>
+            <td class="num">{$breakdown->materialLines[$iterator->counter0]->getTotal()|money}</td>
+        </tr>
+        {/foreach}
+    </tbody>
+</table>
+{else}
+<div class="text-block muted">Bez použitého materiálu.</div>
+{/if}
+
+<br>
+<table>
+    <tr>
+        <td width="50%"></td>
+        <td width="50%">
+            <table class="totals">
+                <tr><td>Práce</td><td class="num">{$breakdown->laborTotal|money}</td></tr>
+                <tr><td>Materiál</td><td class="num">{$breakdown->materialTotal|money}</td></tr>
+                {if $breakdown->hasDiscount()}
+                    <tr><td>Mezisoučet</td><td class="num">{$breakdown->subtotal|money}</td></tr>
+                    <tr><td>Sleva {$breakdown->discountPercent->stripTrailingZeros()} %</td><td class="num">−{$breakdown->discountAmount|money}</td></tr>
+                {/if}
+                <tr><td class="strong">Základ daně</td><td class="num strong">{$breakdown->taxBase|money}</td></tr>
+                <tr><td>DPH {$breakdown->vatRate->stripTrailingZeros()} %</td><td class="num">{$breakdown->vatAmount|money}</td></tr>
+                <tr class="grand"><td>Celkem k úhradě</td><td class="num">{$breakdown->total|money}</td></tr>
+            </table>
+        </td>
+    </tr>
+</table>

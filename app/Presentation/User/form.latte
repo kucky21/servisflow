@@ -1,0 +1,33 @@
+{varType Nette\Database\Table\ActiveRow|null $editedUser}
+{import '../@form.latte'}
+
+{block title}{$editedUser ? 'Upravit uživatele' : 'Nový uživatel'}{/block}
+
+{block content}
+<div class="page-header">
+    <div>
+        <nav class="breadcrumbs"><a n:href="default">Uživatelé</a></nav>
+        <h1 class="page-title">{$editedUser ? $editedUser->first_name . ' ' . $editedUser->last_name : 'Nový uživatel'}</h1>
+    </div>
+</div>
+
+<form n:name="userForm" class="form-layout">
+    {include formErrors $form}
+    <section class="card">
+        <div class="card-header"><h2 class="card-title">{icon('user')} Údaje uživatele</h2></div>
+        <div class="card-body row g-3">
+            {include field $form['first_name'], class: 'col-md-6'}
+            {include field $form['last_name'], class: 'col-md-6'}
+            {include field $form['email'], class: 'col-md-6'}
+            {include field $form['phone'], class: 'col-md-6'}
+            {include field $form['role'], class: 'col-md-6'}
+            {include field $form['password'], class: 'col-md-6'}
+            {include field $form['is_active']}
+        </div>
+    </section>
+    <div class="form-actions">
+        <a n:href="default" class="btn btn-light">Zrušit</a>
+        <button n:name="send" class="btn btn-primary">{icon('check')} {$form['send']->getCaption()}</button>
+    </div>
+</form>
+{/block}

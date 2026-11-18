@@ -1,0 +1,28 @@
+{parameters Nette\Utils\Paginator $paginator}
+{if $paginator->getPageCount() > 1}
+    {var $page = $paginator->getPage()}
+    {var $last = $paginator->getLastPage()}
+    {var $steps = array_unique(array_filter([1, $page - 2, $page - 1, $page, $page + 1, $page + 2, $last], fn($p) => $p >= 1 && $p <= $last))}
+    <nav class="pagination-bar" aria-label="Stránkování">
+        <div class="small text-secondary">
+            Zobrazeno {$paginator->getOffset() + 1}–{min($paginator->getOffset() + $paginator->getItemsPerPage(), $paginator->getItemCount())}
+            z {$paginator->getItemCount()}
+        </div>
+        <ul class="pagination pagination-sm mb-0">
+            <li n:class="page-item, $paginator->isFirst() ? disabled">
+                <a class="page-link" n:href="this, page => $page - 1" aria-label="Předchozí">‹</a>
+            </li>
+            {var $prev = 0}
+            {foreach $steps as $step}
+                <li n:if="$step - $prev > 1" class="page-item disabled"><span class="page-link">…</span></li>
+                <li n:class="page-item, $step === $page ? active">
+                    <a class="page-link" n:href="this, page => $step">{$step}</a>
+                </li>
+                {do $prev = $step}
+            {/foreach}
+            <li n:class="page-item, $paginator->isLast() ? disabled">
+                <a class="page-link" n:href="this, page => $page + 1" aria-label="Další">›</a>
+            </li>
+        </ul>
+    </nav>
+{/if}

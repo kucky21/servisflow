@@ -1,0 +1,43 @@
+{import '../@form.latte'}
+
+{block title}Nastavení{/block}
+
+{block content}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Nastavení systému</h1>
+        <p class="page-subtitle">Údaje společnosti pro dokumenty a výchozí cenové parametry</p>
+    </div>
+</div>
+
+<form n:name="settingsForm" class="form-layout">
+    {include formErrors $form}
+    <section class="card">
+        <div class="card-header"><h2 class="card-title">{icon('building-2')} Společnost</h2><span class="card-subtitle">zobrazuje se v hlavičce PDF dokumentů</span></div>
+        <div class="card-body row g-3">
+            {include field $form['company_name'], class: 'col-md-6'}
+            {include field $form['company_web'], class: 'col-md-6'}
+            {include field $form['company_street'], class: 'col-md-6'}
+            {include field $form['company_city'], class: 'col-md-4'}
+            {include field $form['company_zip'], class: 'col-md-2'}
+            {include field $form['company_ico'], class: 'col-md-3'}
+            {include field $form['company_dic'], class: 'col-md-3'}
+            {include field $form['company_phone'], class: 'col-md-3'}
+            {include field $form['company_email'], class: 'col-md-3'}
+            {include field $form['company_bank_account'], class: 'col-md-6'}
+        </div>
+    </section>
+    <section class="card">
+        <div class="card-header"><h2 class="card-title">{icon('calculator')} Ceny a lhůty</h2><span class="card-subtitle">změna se projeví u nově přijatých zakázek</span></div>
+        <div class="card-body row g-3">
+            {include field $form['default_hourly_rate'], class: 'col-md-4'}
+            {include field $form['vat_rate'], class: 'col-md-4'}
+            {include field $form['default_due_days'], class: 'col-md-4'}
+            {include field $form['document_footer']}
+        </div>
+    </section>
+    <div class="form-actions">
+        <button n:name="send" class="btn btn-primary">{icon('save')} Uložit nastavení</button>
+    </div>
+</form>
+{/block}
